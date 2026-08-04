@@ -1,3 +1,13 @@
+/**
+ * Tela de setup. Escrita para WebView VELHO de TV box (Chrome ~51 num Android 7 é comum).
+ * Duas regras que valem ouro aqui:
+ *   - Centralizar com FLEX, nunca com `place-items` (Chrome 59+). Sem suporte, o shorthand é
+ *     ignorado e o cartão cola no canto superior esquerdo, com a TV inteira em branco ao lado.
+ *   - Espaçar com MARGIN, nunca com `gap` em flex (Chrome 84+). Sem suporte, logo e título
+ *     ficam grudados e a tela parece quebrada.
+ * As cores levam um valor literal antes do `var()` porque variável de CSS só existe do Chrome 49:
+ * sem o fallback, um aparelho mais velho renderiza texto sem cor no fundo branco.
+ */
 :root {
   --brand: #0f9bf0; --cta: #14286b; --tint: #e6f3fe;
   --ink: #14286b; --muted: #7c756c; --line: #e8e3d8; --canvas: #fbfaf7;
@@ -6,49 +16,64 @@
 html, body { height: 100%; margin: 0; }
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  color: var(--ink);
+  color: #14286b; color: var(--ink);
+  background: #fbfaf7;
   background: radial-gradient(1200px 700px at 50% -10%, var(--tint), var(--canvas) 60%);
-  display: grid; place-items: center; padding: 24px; -webkit-user-select: none; user-select: none;
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+  -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
+  padding: 24px; -webkit-user-select: none; user-select: none;
 }
 .card {
   width: 100%; max-width: 560px; background: #fff; border: 1px solid var(--line);
   border-radius: 20px; padding: 30px 28px; box-shadow: 0 24px 60px -30px rgba(32,27,23,.4);
 }
-.head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
-.logo { width: 46px; height: 46px; border-radius: 12px; background: var(--brand); color: #fff;
-  display: grid; place-items: center; font-size: 22px; box-shadow: 0 8px 22px -8px var(--cta); }
+.head { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; margin-bottom: 22px; }
+.head > * + * { margin-left: 14px; }
+.logo { width: 46px; height: 46px; border-radius: 12px; background: #0f9bf0; background: var(--brand); color: #fff;
+  display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center; flex: none;
+  font-size: 22px; box-shadow: 0 8px 22px -8px var(--cta); }
 h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
 h1 span { color: var(--brand); }
-.sub { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.sub { margin: 2px 0 0; color: #7c756c; color: var(--muted); font-size: 14px; }
 .field { display: block; margin-bottom: 6px; }
 .field span { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
 .field span em { font-style: normal; font-weight: 400; opacity: .8; }
 #url, #password { width: 100%; font-size: 16px; padding: 14px 14px; border: 2px solid var(--line);
   border-radius: 12px; outline: none; transition: border-color .15s, box-shadow .15s; }
 #url:focus, #password:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--tint); }
-.err { color: var(--cta); font-size: 13px; font-weight: 600; margin: 8px 0 0; }
-.actions { display: flex; gap: 10px; margin-top: 16px; }
+.err { color: #14286b; color: var(--cta); font-size: 13px; font-weight: 600; margin: 8px 0 0; }
+.actions { display: -webkit-flex; display: flex; margin-top: 16px; }
+.actions > * + * { margin-left: 10px; }
 .btn { cursor: pointer; font: inherit; font-weight: 700; border: 0; border-radius: 12px; padding: 14px 18px; transition: background .15s, transform .05s; }
 .btn:active { transform: translateY(1px); }
-.btn.primary { background: var(--brand); color: #fff; flex: 1; }
+.btn.primary { background: #0f9bf0; background: var(--brand); color: #fff; -webkit-flex: 1; flex: 1; }
 .btn.primary:hover { background: var(--cta); }
-.btn.ghost { background: transparent; color: var(--brand); border: 2px solid var(--line); }
+.btn.ghost { background: transparent; color: #0f9bf0; color: var(--brand); border: 2px solid var(--line); }
 .btn.ghost:hover { background: var(--tint); }
 .favs { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 16px; }
 .favs h2 { font-size: 14px; color: var(--muted); margin: 0 0 10px; text-transform: uppercase; letter-spacing: .04em; }
-#favs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-#favs li { display: flex; align-items: center; gap: 8px; background: var(--canvas); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
-#favs .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; cursor: pointer; }
+#favs { list-style: none; margin: 0; padding: 0; }
+#favs li { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
+  background: var(--canvas); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+#favs li > * + * { margin-left: 8px; }
+#favs .name { -webkit-flex: 1; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; cursor: pointer; }
 #favs .name small { display: block; color: var(--muted); font-size: 11px; }
 #favs button { cursor: pointer; border: 0; background: transparent; color: var(--muted); font-size: 16px; padding: 4px 6px; border-radius: 8px; }
-.toggle { display: flex; align-items: center; gap: 10px; margin-top: 16px; font-size: 14px; color: var(--ink); cursor: pointer; }
-.toggle input { width: 18px; height: 18px; accent-color: var(--brand); flex: none; }
-.row { display: flex; align-items: flex-end; gap: 12px; margin-top: 14px; flex-wrap: wrap; transition: opacity .15s; }
-.field.inline { margin: 0; flex: 1; min-width: 180px; }
+.toggle { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
+  margin-top: 16px; font-size: 14px; color: var(--ink); cursor: pointer; }
+.toggle > * + * { margin-left: 10px; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--brand); -webkit-flex: none; flex: none; }
+.row { display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end;
+  margin-top: 14px; -webkit-flex-wrap: wrap; flex-wrap: wrap; transition: opacity .15s; }
+.row > * + * { margin-left: 12px; }
+.field.inline { margin: 0; -webkit-flex: 1; flex: 1; min-width: 180px; }
 #interval { width: 100%; font: inherit; font-size: 15px; padding: 12px 12px; border: 2px solid var(--line);
   border-radius: 12px; background: #fff; outline: none; cursor: pointer; }
 .row .btn { padding: 12px 14px; font-size: 14px; }
-.quit-row { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; justify-content: center; }
+.quit-row { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line);
+  display: -webkit-flex; display: flex; -webkit-justify-content: center; justify-content: center; }
 .btn.danger { background: transparent; color: #b42318; border: 2px solid #f2c4bd; }
 .btn.danger:hover { background: #fdecea; }
 .btn.danger.armed { background: #b42318; color: #fff; border-color: #b42318; }
@@ -61,8 +86,10 @@ h1 span { color: var(--brand); }
 }
 .toggle:focus-within { outline: 2px dashed var(--brand); outline-offset: 4px; border-radius: 8px; }
 
-.loader { position: fixed; inset: 0; background: rgba(10,13,19,.92); display: grid; place-items: center; color: #fff; }
-.loader[hidden] { display: none; } /* a regra .loader{display:grid} vence o [hidden] do navegador — sem isto o preloader fica sempre visível */
+.loader { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(10,13,19,.92);
+  display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center; color: #fff; }
+.loader[hidden] { display: none; } /* a regra .loader{display:flex} vence o [hidden] do navegador — sem isto o preloader fica sempre visível */
 .loader-box { text-align: center; max-width: 360px; padding: 24px; }
 .loader-box h2 { margin: 18px 0 6px; font-size: 20px; }
 .loader-box p { margin: 0; color: rgba(255,255,255,.7); font-size: 14px; }
@@ -76,7 +103,29 @@ h1 span { color: var(--brand); }
    o que ainda falta em vez de deixar o usuário achar que está tudo certo. */
 .aviso { margin-top: 10px; border: 2px solid var(--brand); border-radius: 12px; padding: 12px 14px; background: var(--tint); }
 .aviso p { margin: 0 0 8px; font-size: 13px; line-height: 1.5; }
-.aviso-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
-.aviso-acoes .btn { flex: 1; min-width: 180px; padding: 11px 14px; font-size: 14px; }
+.aviso-acoes { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; margin: -4px; }
+.aviso-acoes .btn { -webkit-flex: 1; flex: 1; min-width: 180px; padding: 11px 14px; font-size: 14px; margin: 4px; }
 .aviso-nota { margin: 8px 0 0 !important; font-size: 12px; color: var(--muted); }
 .aviso-ok { margin-top: 10px; font-size: 13px; font-weight: 600; color: #0d9488; }
+
+/* TV: a tela é grande e o usuário está a três metros dela. Cartão mais largo e tudo maior, senão
+   vira aquele quadradinho perdido no meio de uma parede branca. */
+@media (min-width: 1000px) {
+  body { padding: 5vh 5vw; } /* respiro nas bordas: TV velha corta as pontas (overscan) */
+  .card { max-width: 760px; padding: 44px 44px; border-radius: 26px; }
+  .logo { width: 60px; height: 60px; font-size: 28px; border-radius: 16px; }
+  h1 { font-size: 30px; }
+  .sub { font-size: 17px; }
+  .field span { font-size: 15px; }
+  #url, #password, #interval { font-size: 20px; padding: 18px 16px; }
+  .btn { font-size: 18px; padding: 18px 22px; }
+  .row .btn, .aviso-acoes .btn { font-size: 16px; padding: 14px 18px; }
+  .toggle { font-size: 17px; }
+  .toggle input { width: 22px; height: 22px; }
+  .favs h2 { font-size: 16px; }
+  #favs .name { font-size: 17px; }
+  #favs .name small { font-size: 13px; }
+  .aviso p { font-size: 16px; }
+  .foot { font-size: 14px; }
+  .err { font-size: 16px; }
+}
