@@ -1,0 +1,9 @@
+node_modules/
+dist/
+out/
+.DS_Store
+*.log
+
+# Player copiado do plugin no build (fonte única = ../../ds-facil/player/). Nunca commitar a cópia.
+src/renderer/player.js
+src/renderer/player.css

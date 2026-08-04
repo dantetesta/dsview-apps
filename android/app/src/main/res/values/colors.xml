@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fundo do ícone adaptativo = creme do corpo do ícone oficial (preenche as bordas ao mascarar). -->
+    <color name="ic_launcher_background">#FCF6EF</color>
+</resources>

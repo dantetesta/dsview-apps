@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>DS View</title>
+  <link rel="stylesheet" href="/assets/player.css" />
+  <script>
+    // Servido pelo servidor local (127.0.0.1). O player.js roda idêntico ao do site, só que
+    // apontado pro cache local — offline-first, sem saber que mudou.
+    (function () {
+      var q = new URLSearchParams(location.search);
+      var token = q.get('token') || '';
+      var device = q.get('device') || '';
+      // Passa o device (sessão eterna, obtido no setup) pro localStorage do player → pula a senha.
+      try {
+        if (device) localStorage.setItem('dsv_device_' + token, device);
+        else localStorage.removeItem('dsv_device_' + token);
+      } catch (e) {}
+      window.DSF_PLAYER = { api: location.origin + '/state', token: token, logo: '', brand: '' };
+      // Kiosk desatendido: o player só desmuta após um gesto. Como o WebView já roda com autoplay
+      // liberado (mediaPlaybackRequiresUserGesture=false), simulamos o gesto pro som sair sozinho.
+      window.addEventListener('load', function () {
+        var fire = function () { try { document.dispatchEvent(new MouseEvent('click', { bubbles: true })); } catch (e) {} };
+        setTimeout(fire, 300); setTimeout(fire, 1200); setTimeout(fire, 3000);
+      });
+    })();
+  </script>
+</head>
+<body style="margin:0;background:#000;overflow:hidden">
+  <div id="dsf-stage" aria-live="off"></div>
+  <script src="/assets/player.js" defer></script>
+</body>
+</html>

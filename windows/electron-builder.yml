@@ -1,0 +1,28 @@
+appId: com.dsview.player.webview
+productName: DS View
+copyright: © 
+
+directories:
+  output: dist
+  buildResources: assets
+
+files:
+  - src/**/*
+  - package.json
+  - "!**/*.map"
+
+# Windows 10/11 (x64). Instalador NSIS com wizard (sem versão portátil autoexecutável).
+win:
+  target:
+    - nsis
+  icon: assets/icon.ico   # ícone oficial (multi-tamanho até 256px)
+
+nsis:
+  oneClick: false                        # wizard de instalação (não instala com 1 clique).
+  perMachine: false
+  allowToChangeInstallationDirectory: true # deixa o usuário escolher a pasta.
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DS View
+  installerIcon: assets/icon.ico          # ícone do instalador (.exe do wizard)
+  uninstallerIcon: assets/icon.ico

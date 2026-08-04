@@ -1,0 +1,13 @@
+.gradle/
+build/
+/local.properties
+*.iml
+.idea/
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Player copiado do plugin no build (fonte única = ../../ds-facil/player/). Nunca commitar a cópia.
+app/src/main/assets/player.js
+app/src/main/assets/player.css

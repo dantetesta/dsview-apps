@@ -1,0 +1,20 @@
+{
+  "name": "dsview",
+  "productName": "DS View",
+  "version": "0.2.0",
+  "description": "App WebView kiosk offline para rodar playlists do DS View em TVs/mini-PCs Windows.",
+  "author": "DS View",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "src/main/main.js",
+  "scripts": {
+    "copy-player": "node scripts/copy-player.js",
+    "start": "npm run copy-player && electron .",
+    "dist": "npm run copy-player && electron-builder --win --x64",
+    "dist:dir": "npm run copy-player && electron-builder --win --x64 --dir"
+  },
+  "devDependencies": {
+    "electron": "^31.7.0",
+    "electron-builder": "^24.13.3"
+  }
+}
