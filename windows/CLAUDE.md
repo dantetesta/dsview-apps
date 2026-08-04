@@ -62,7 +62,7 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
 | `src/renderer/setup.*` | Tela de configuração: cola URL → `resolveSave` → `favAdd` → `syncNow` (preloader) → `play`. Favoritos, toggle de auto-start. |
 | `src/renderer/player.html` | Injeta `window.DSF_PLAYER = {api:'http://127.0.0.1:{port}/state', token}` e carrega o `player.js`. |
 | `src/renderer/player.js` · `player.css` | **CÓPIA do plugin — gitignorada, NÃO editar aqui.** Ver "Regras de domínio". |
-| `scripts/copy-player.js` | Copia `player.js`/`player.css` de `../ds-facil/player/` → `src/renderer/`. Roda em `npm start`/`dist`. Se o plugin não estiver ao lado, avisa mas não trava o build. |
+| `scripts/copy-player.js` | Copia `player.js`/`player.css` de `../../ds-facil/player/` → `src/renderer/`. Roda em `npm start`/`dist`. Se o plugin não estiver ao lado, avisa mas não trava o build. |
 
 ## Modelo de dados
 
@@ -89,7 +89,7 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
 ## Regras de domínio / gotchas (lições que voltam)
 
 1. **O player tem fonte única: o plugin.** `src/renderer/player.js|css` são **cópias gitignoradas**. Nunca editar aqui —
-   corrigir no plugin (`../ds-facil/player/`) e rodar `npm run copy-player` (já embutido em `start`/`dist`).
+   corrigir no plugin (`../../ds-facil/player/`) e rodar `npm run copy-player` (já embutido em `start`/`dist`).
    Player velho no app = você esqueceu de rodar o copy.
 2. **O truque `/state` + `/state/auth`.** O `player.js` faz `fetch(api)` e `fetch(api + '/auth')`. Por isso o `api`
    injetado é `.../state` (sem barra no fim) — concatenar `/auth` dá `/state/auth`. As rotas do `server.js` são

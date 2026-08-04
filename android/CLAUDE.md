@@ -1,4 +1,4 @@
-# DS View (dsview-android) — mapa vivo
+# DS View (dsview-apps/android) — mapa vivo
 
 App **kiosk offline Android** (Kotlin + WebView), irmão do `../dsview` (Windows/Electron). Roda em
 **qualquer Android** incluindo **Android TV**. Mesma arquitetura **cache-proxy**: servidor local espelha a API do
@@ -21,7 +21,7 @@ prune/clear) · `Config` (SharedPreferences) · `StateStore` (last-good.json) ·
 
 ## Regras de domínio / gotchas
 1. **Player é single-source do plugin.** `assets/player.js|css` são **cópias gitignoradas** — a task Gradle `copyPlayer`
-   copia de `../ds-facil/player/` no build. Nunca editar aqui; corrigir no plugin e rebuildar. `setup.*` e `player.html`
+   copia de `../../ds-facil/player/` no build. Nunca editar aqui; corrigir no plugin e rebuildar. `setup.*` e `player.html`
    são do app (fetch nos `/dsf/…`), não vêm do plugin.
 2. **Tudo passa pelo servidor local** (127.0.0.1:{porta aleatória}). O WebView carrega `/setup` ou
    `/player?token=&device=`; o player usa `location.origin + '/state'` como api. Mesma origem → sem CORS/porta injetada.
