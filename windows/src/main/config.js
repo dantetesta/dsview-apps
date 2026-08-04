@@ -22,6 +22,7 @@ const DEFAULTS = {
   offline: true, // modo offline-first (cache local). false = consome só o servidor online.
   syncInterval: SYNC_DEFAULT, // minutos entre consultas à playlist (5..1440)
   lastUrl: '', // última URL colada no setup (para reexibir)
+  quitUntilBoot: null, // boot-id em que o usuário fechou de propósito (ver bootId() no main.js)
 };
 
 /** Intervalo de sync em minutos, sempre dentro dos limites (5..1440). */

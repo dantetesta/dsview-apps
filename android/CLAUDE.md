@@ -30,9 +30,15 @@ prune/clear) · `Config` (SharedPreferences) · `StateStore` (last-good.json) ·
    (o `player.js` só desmuta quando seu `audioOn` vira true). Um sem o outro = mudo.
 4. **Offline sem device → setup** (`MainActivity.route`), senão o player mostraria o form de senha dele.
    Só-online → carrega `/play/{token}` remoto (o `shouldOverrideUrlLoading` libera o origin configurado).
-5. **Sync por `version`**: só rebaixa quando `payload.version` muda (depende do plugin bumpar). Tudo atômico
+5. **Auto-start só reabre no boot de verdade.** `BootReceiver` só dispara em evento real de boot (correto por
+   natureza), mas se o app for a **tela inicial (HOME)** do aparelho, `finish()` sozinho não "fecha" nada — o Android
+   sempre precisa de um HOME de pé e reinvoca. Por isso o "Sair" do menu grava `Config.quitUntilBoot = Config.bootId()`
+   (mesmo truque do app Windows, via `SystemClock.elapsedRealtime()`) e `MainActivity.onCreate` recusa montar UI
+   enquanto o boot-id bater — só um reboot de verdade libera de novo. BACK/MENU (equivalente ao ESC do Windows) e o
+   "x" discreto do `player.html` (hover, se houver mouse) levam pro setup sem fechar o app.
+6. **Sync por `version`**: só rebaixa quando `payload.version` muda (depende do plugin bumpar). Tudo atômico
    (mídia `.part`→rename; last-good só depois de tudo no disco; então prune).
-6. **Depende do contrato público do plugin** (endpoints `/wp-json/ds-facil/v1/player/{token}` + `/auth`, campos
+7. **Depende do contrato público do plugin** (endpoints `/wp-json/ds-facil/v1/player/{token}` + `/auth`, campos
    `queue[].{src,provider,kind,audio}` + `version`, status ok/password/expired/offline). Mudou lá → quebra aqui.
 
 ## Compatibilidade em TV box (v0.2.0) — por que cada coisa existe

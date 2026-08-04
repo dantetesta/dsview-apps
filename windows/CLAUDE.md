@@ -16,7 +16,8 @@ Windows real nem empacotado.**
 
 ## O que ele faz
 
-- **Kiosk full-screen** sem barra de endereço. Botão direito = menu de contexto (Configurações / Recarregar / Sair).
+- **Kiosk full-screen** sem barra de endereço. Botão direito, **ESC** ou o **"x" discreto do canto** (aparece só no
+  hover do mouse, em `player.html`) saem do kiosk pras configurações. Menu de contexto = Configurações / Recarregar / Sair.
 - **Setup na 1ª execução:** sem nada configurado abre **direto o setup** e **não baixa nada** até o usuário colar o link
   `/play/{token}` (ou código curto) e confirmar. Campo de **senha da playlist** ali no setup. **Favoritos** (até 30 URLs).
 - **Senha:** autentica **no setup** (`/auth` do plugin → device de sessão eterna, guardado em `config.device`) e injeta
@@ -32,6 +33,9 @@ Windows real nem empacotado.**
 - **Limpar dados offline:** botão no setup que apaga toda a mídia + a "última versão boa" e rebaixa do zero.
 - **Preloader** no 1º acesso / troca de playlist (só no modo offline; baixa tudo antes de iniciar, com barra de progresso).
 - **Auto-start no boot** do Windows (opção): liga → ao ligar o PC o app abre sozinho em fullscreen e inicia a playlist.
+  **Só abre sozinho no boot de verdade:** se o usuário fechar de propósito (menu "Sair", Ctrl+Shift+Q, ou "Encerrar" no
+  setup), o app marca o boot atual (`bootId()` = `Date.now()/1000 - os.uptime()`, `config.quitUntilBoot`) e não reabre
+  sozinho pelo resto da sessão — nem se algo de fora tentar relançar. Só reiniciar o Windows libera de novo.
 - **Anti-sleep** (tela não apaga). **Single-instance**.
 
 ## Arquitetura (cache-proxy + webview)

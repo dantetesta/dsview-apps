@@ -1,10 +1,13 @@
 /**
  * DS View — processo principal.
  * Casca kiosk fullscreen + servidor local (cache offline) + loop de sync. Sem barra de URL:
- * botão direito abre o menu de contexto (Configurações / Recarregar / Sair). Auto-start no boot opcional.
+ * botão direito, ESC ou o "x" discreto do canto abrem o menu/as configurações (Configurações /
+ * Recarregar / Sair). Auto-start no boot opcional — mas só entra sozinho no boot: se o usuário
+ * fechar de propósito, fica fechado até o Windows reiniciar de novo (ver `quitForGood()`).
  */
 'use strict';
 const path = require('path');
+const os = require('os');
 const { execFile } = require('child_process'); // usado só para ler o registro do Windows (login automático)
 const {
   app, BrowserWindow, Menu, ipcMain, powerSaveBlocker, globalShortcut,
@@ -22,6 +25,31 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 let win = null;
 let port = 0;
+
+// Fingerprint estável do boot atual do Windows (epoch do momento em que ligou). `os.uptime()` anda
+// junto com `Date.now()`, então `agora - uptime` dá sempre o mesmo instante, boot afora — sem
+// precisar ler nada do Windows. É o que decide "abrir sozinho só depois de reiniciar":
+// ver `quitForGood()`/o guard em `whenReady()`.
+function bootId() {
+  return Math.round(Date.now() / 1000 - os.uptime());
+}
+
+/** Fecho pedido pelo usuário (menu, atalho, botão "Encerrar" do setup): marca o boot atual como
+ * "fechado de propósito" antes de sair. Enquanto for o mesmo boot, o app não volta sozinho — nem
+ * se algo de fora (agendador, acesso atribuído) tentar reabrir. Só um novo boot libera de novo. */
+function quitForGood() {
+  config.write({ quitUntilBoot: bootId() });
+  app.quit();
+}
+
+/** ESC ou o "x" do canto: sai do kiosk (recupera decoração/taskbar) e vai pras configurações —
+ * sem fechar o app. Quem quer encerrar de verdade usa o botão "Encerrar" de lá. */
+function exitKioskToSetup() {
+  if (!win || win.isDestroyed()) return;
+  win.setKiosk(false);
+  win.setFullScreen(false);
+  loadSetup();
+}
 
 // ---------------------------------------------------------------- janela
 function createWindow() {
@@ -49,14 +77,23 @@ function createWindow() {
     if (!url.startsWith('file:') && !url.startsWith('http://127.0.0.1:' + port) && !allowRemote) e.preventDefault();
   });
 
-  // Menu de contexto (botão direito) — o único jeito de chegar nas configurações.
+  // Menu de contexto (botão direito) — sempre disponível pra chegar nas configurações.
   win.webContents.on('context-menu', () => {
     Menu.buildFromTemplate([
-      { label: 'Configurações', click: loadSetup },
+      { label: 'Configurações', click: exitKioskToSetup },
       { label: 'Recarregar (buscar mudanças)', click: reloadFresh },
       { type: 'separator' },
-      { label: 'Sair (Ctrl+Shift+Q)', click: () => app.quit() },
+      { label: 'Sair (Ctrl+Shift+Q)', click: quitForGood },
     ]).popup({ window: win });
+  });
+
+  // ESC: mesmo atalho do "x" discreto do canto do player.html — sai do kiosk pras configurações.
+  // Só intercepta em modo kiosk (não mexe no ESC dentro do próprio formulário de configurações).
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && input.key === 'Escape' && win.isKiosk()) {
+      event.preventDefault();
+      exitKioskToSetup();
+    }
   });
 
   routeStartup();
@@ -119,8 +156,8 @@ function wireIpc() {
   });
 
   ipcMain.handle('app:play', () => { loadPlayer(); return true; });
-  ipcMain.handle('app:setup', () => { loadSetup(); return true; });
-  ipcMain.handle('app:quit', () => { app.quit(); return true; }); // encerra o programa (mesma ação do menu/atalho).
+  ipcMain.handle('app:setup', () => { exitKioskToSetup(); return true; }); // "x" do canto do player.
+  ipcMain.handle('app:quit', () => { quitForGood(); return true; }); // botão "Encerrar" do setup.
 
   // Favoritos
   ipcMain.handle('fav:list', () => config.read().favorites || []);
@@ -202,6 +239,11 @@ if (!gotLock) {
   app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 
   app.whenReady().then(async () => {
+    // Usuário fechou de propósito neste mesmo boot (menu/atalho/botão "Encerrar")? Respeita e não
+    // reabre sozinho — mesmo se algo de fora (agendador, acesso atribuído) tentar relançar. Só
+    // reinicia o Windows pra liberar de novo. Sai antes de tocar em servidor/sync/janela.
+    if (config.read().quitUntilBoot === bootId()) { app.quit(); return; }
+
     powerSaveBlocker.start('prevent-display-sleep'); // TV não apaga.
     wireIpc();
 
@@ -214,7 +256,7 @@ if (!gotLock) {
     const cfg = config.read();
     app.setLoginItemSettings({ openAtLogin: !!cfg.autostart, path: process.execPath });
 
-    globalShortcut.register('CommandOrControl+Shift+Q', () => app.quit()); // saída de manutenção.
+    globalShortcut.register('CommandOrControl+Shift+Q', quitForGood); // saída de manutenção.
     createWindow();
   });
 

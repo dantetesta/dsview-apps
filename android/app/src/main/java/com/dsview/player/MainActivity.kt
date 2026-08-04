@@ -26,6 +26,8 @@ import java.net.URLEncoder
 /**
  * Casca kiosk fullscreen em volta do player. Sem barra de URL. BACK/MENU abre o menu
  * (Configurações / Recarregar / Diagnóstico / Sair) — equivalente ao botão direito do app Windows.
+ * Auto-start no boot é opcional, mas só entra sozinho no boot de verdade: se o usuário fechar de
+ * propósito pelo "Sair", fica fechado até o aparelho reiniciar de novo (ver `Config.quitUntilBoot`).
  *
  * Compatibilidade (TV box Android 10 e afins): a criação do WebView, a porta do servidor local e a
  * morte do processo de renderização são TRATADAS. Qualquer uma delas falhando mostra uma tela preta
@@ -39,6 +41,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Usuário fechou de propósito neste mesmo boot (menu "Sair")? Respeita e não reabre
+        // sozinho — nem se o Android reinvocar o app por ser a tela inicial do aparelho (HOME).
+        // Só um boot novo (reiniciar de verdade) libera de novo. Sai antes de montar qualquer UI.
+        if (app.config.quitUntilBoot == Config.bootId()) { finish(); return }
+
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) // TV não apaga.
 
         // 1) O servidor local precisa estar de pé — é ele que serve setup, player e mídia.
@@ -207,7 +215,7 @@ class MainActivity : AppCompatActivity() {
                         runOnUiThread { web?.reload() ?: route() }
                     }.start()
                     2 -> showDiagnostics()
-                    3 -> finish()
+                    3 -> { app.config.quitUntilBoot = Config.bootId(); finish() }
                 }
             }
             .show()

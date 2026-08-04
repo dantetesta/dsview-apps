@@ -1,6 +1,7 @@
 package com.dsview.player
 
 import android.content.Context
+import android.os.SystemClock
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
@@ -41,6 +42,15 @@ class Config(context: Context) {
     var lastUrl: String
         get() = prefs.getString("lastUrl", "") ?: ""
         set(v) { prefs.edit().putString("lastUrl", v).apply() }
+
+    /**
+     * Boot-id (ver `bootId()`) em que o usuário fechou o app de propósito (menu "Sair"). Enquanto
+     * for o boot atual, `MainActivity` recusa abrir sozinho — nem se o app for a tela inicial do
+     * aparelho e o Android tentar reabrir por ser HOME. Só um boot novo libera de novo.
+     */
+    var quitUntilBoot: Long
+        get() = prefs.getLong("quitUntilBoot", 0L)
+        set(v) { prefs.edit().putLong("quitUntilBoot", v).apply() }
 
     /** Minutos entre consultas à playlist (5..1440). */
     var syncInterval: Int
@@ -90,5 +100,12 @@ class Config(context: Context) {
         const val SYNC_MIN = 5
         const val SYNC_MAX = 1440
         const val SYNC_DEFAULT = 60
+
+        /**
+         * Fingerprint estável do boot atual (epoch-ms de quando o aparelho ligou). `elapsedRealtime()`
+         * anda junto com `currentTimeMillis()`, então a subtração dá sempre o mesmo instante, boot
+         * afora — sem precisar de nenhuma permissão extra. Mesmo truque do app Windows (`os.uptime()`).
+         */
+        fun bootId(): Long = System.currentTimeMillis() - SystemClock.elapsedRealtime()
     }
 }

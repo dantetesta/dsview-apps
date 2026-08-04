@@ -5,6 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>DS View</title>
   <link rel="stylesheet" href="player.css" />
+  <style>
+    /* "x" discreto de saída do kiosk — só aparece com o mouse em cima. ESC faz o mesmo (ver main.js).
+       Não mexe no player.css (cópia do plugin, não editar). */
+    #dsf-exit-hot {
+      position: fixed; top: 0; right: 0; width: 64px; height: 64px; z-index: 2147483647;
+      cursor: pointer; display: flex; align-items: flex-start; justify-content: flex-end; padding: 10px;
+    }
+    #dsf-exit-hot::after {
+      content: '\2715'; width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(0,0,0,.45); color: #fff; font: 600 13px/26px system-ui, sans-serif; text-align: center;
+      opacity: 0; transition: opacity .2s ease;
+    }
+    #dsf-exit-hot:hover::after { opacity: 1; }
+  </style>
   <script>
     // O main injeta a porta do servidor local via query. O player.js roda idêntico ao do site,
     // só que apontado para o cache local (127.0.0.1) — offline-first, sem saber que mudou.
@@ -35,6 +49,12 @@
 </head>
 <body style="margin:0;background:#000;overflow:hidden">
   <div id="dsf-stage" aria-live="off"></div>
+  <div id="dsf-exit-hot" title="Configurações"></div>
+  <script>
+    document.getElementById('dsf-exit-hot').addEventListener('click', function () {
+      if (window.dsf) window.dsf.openSetup();
+    });
+  </script>
   <script src="player.js" defer></script>
 </body>
 </html>

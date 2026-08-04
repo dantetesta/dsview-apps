@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>DS View</title>
   <link rel="stylesheet" href="/assets/player.css" />
+  <style>
+    /* "x" discreto de saída — só aparece com o mouse em cima (aparelho com mouse/touch conectado).
+       No controle remoto o equivalente é BACK/MENU (ver MainActivity.onKeyDown). Não mexe no
+       player.css (cópia do plugin, não editar). */
+    #dsf-exit-hot {
+      position: fixed; top: 0; right: 0; width: 64px; height: 64px; z-index: 2147483647;
+      cursor: pointer; display: flex; align-items: flex-start; justify-content: flex-end; padding: 10px;
+    }
+    #dsf-exit-hot::after {
+      content: '\2715'; width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(0,0,0,.45); color: #fff; font: 600 13px/26px system-ui, sans-serif; text-align: center;
+      opacity: 0; transition: opacity .2s ease;
+    }
+    #dsf-exit-hot:hover::after { opacity: 1; }
+  </style>
   <script>
     // Servido pelo servidor local (127.0.0.1). O player.js roda idêntico ao do site, só que
     // apontado pro cache local — offline-first, sem saber que mudou.
@@ -29,6 +44,12 @@
 </head>
 <body style="margin:0;background:#000;overflow:hidden">
   <div id="dsf-stage" aria-live="off"></div>
+  <div id="dsf-exit-hot" title="Configurações"></div>
+  <script>
+    document.getElementById('dsf-exit-hot').addEventListener('click', function () {
+      location.href = '/setup';
+    });
+  </script>
   <script src="/assets/player.js" defer></script>
 </body>
 </html>
