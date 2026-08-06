@@ -55,4 +55,5 @@ dependencies {
     implementation("androidx.webkit:webkit:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
+    testImplementation("junit:junit:4.13.2")
 }

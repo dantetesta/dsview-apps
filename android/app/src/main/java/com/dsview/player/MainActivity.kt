@@ -93,7 +93,10 @@ class MainActivity : AppCompatActivity() {
         w.isFocusable = true
         w.isFocusableInTouchMode = true
         // Deixa inspecionar por USB (chrome://inspect) — como não há logcat na casa do cliente.
-        try { WebView.setWebContentsDebuggingEnabled(true) } catch (e: Throwable) {}
+        // SÓ em build de debug: em release isso fica ligado pra sempre no aparelho do cliente,
+        // uma porta de depuração remota permanentemente aberta em produção.
+        val debuggable = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (debuggable) { try { WebView.setWebContentsDebuggingEnabled(true) } catch (e: Throwable) {} }
 
         w.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(m: ConsoleMessage): Boolean {
@@ -106,7 +109,7 @@ class MainActivity : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                 if (url == null) return false
                 val origin = app.config.origin
-                val allowed = url.startsWith(base) || (origin.isNotEmpty() && url.startsWith(origin))
+                val allowed = sameOrigin(url, base) || (origin.isNotEmpty() && sameOrigin(url, origin))
                 return !allowed // true = bloqueia navegação externa (kiosk fechado)
             }
 
@@ -126,18 +129,48 @@ class MainActivity : AppCompatActivity() {
         return w
     }
 
+    /** Mesma origem de verdade (esquema+host+porta), não prefixo de string: `url.startsWith(origin)`
+     * deixava `origin + ".attacker.com"` passar como se fosse o site real — kiosk público, isso é
+     * uma tela cheia de phishing/pichação sem ninguém perceber. */
+    private fun sameOrigin(url: String, other: String): Boolean = try {
+        val u1 = android.net.Uri.parse(url)
+        val u2 = android.net.Uri.parse(other)
+        u1.scheme == u2.scheme && u1.host == u2.host && effectivePort(u1) == effectivePort(u2)
+    } catch (e: Exception) { false }
+
+    private fun effectivePort(u: android.net.Uri): Int =
+        if (u.port != -1) u.port else if (u.scheme == "https") 443 else 80
+
+    // Recriar a CADA morte do processo de renderização, sem limite, vira loop de recriar→carregar→
+    // morrer de novo (um vídeo pesado que estoura memória sempre no mesmo ponto, em TV box fraca) —
+    // consome CPU/memória sem parar em vez de recuperar uma vez e ficar quieto. Backoff crescente.
+    private var crashCount = 0
+    private val crashResetMs = 10 * 60 * 1000L // 10 min sem crash = zera a contagem.
+    private var lastCrashAt = 0L
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+
     /** Descarta o WebView morto e monta outro do zero, voltando pra rota atual. */
     private fun recoverFromRendererDeath() {
+        val now = System.currentTimeMillis()
+        if (now - lastCrashAt > crashResetMs) crashCount = 0
+        lastCrashAt = now
+        crashCount += 1
+        val delay = (crashCount * 5000L).coerceAtMost(60000L) // 5s, 10s, 15s ... até 60s no máximo.
+
         val dead = web
         web = null
         try {
             (dead?.parent as? ViewGroup)?.removeView(dead)
             dead?.destroy()
         } catch (e: Throwable) { /* já estava morto */ }
-        val fresh = createWebView() ?: return
-        web = fresh
-        setContentView(fresh)
-        route()
+
+        handler.postDelayed({
+            if (isFinishing || isDestroyed) return@postDelayed
+            val fresh = createWebView() ?: return@postDelayed
+            web = fresh
+            setContentView(fresh)
+            route()
+        }, delay)
     }
 
     /** Decide a tela: player se configurado (e autenticado, no offline), senão setup. */

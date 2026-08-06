@@ -16,7 +16,7 @@
 
     <application
         android:name=".App"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:banner="@drawable/tv_banner"
@@ -54,17 +54,21 @@
             </intent-filter>
         </activity>
 
-        <!-- Auto-start no boot (opcional, ligado no setup). -->
+        <!-- Auto-start no boot (opcional, ligado no setup). `exported="true"` é obrigatório pro
+             sistema conseguir entregar BOOT_COMPLETED (broadcast protegido — nenhum outro app
+             consegue forjar). As ações QUICKBOOT_POWERON, porém, NÃO são protegidas: qualquer app
+             pode mandar uma e forçar o MainActivity a abrir. Mantidas mesmo assim porque caixas
+             Amlogic/MediaTek de verdade não mandam BOOT_COMPLETED (gotcha já documentado) — o pior
+             caso do risco residual é outro app relançar o kiosk, não vazar dado nenhum.
+             ponytail: risco aceito, upgrade se algum cliente reportar abuso de verdade. -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter android:priority="999">
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <!-- Caixas Amlogic/MediaTek costumam mandar estes em vez do BOOT_COMPLETED. -->
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
-                <action android:name="android.intent.action.REBOOT" />
                 <!-- Volta a tocar sozinho depois de atualizar o app. -->
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>

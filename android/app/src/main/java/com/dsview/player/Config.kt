@@ -54,8 +54,8 @@ class Config(context: Context) {
 
     /** Minutos entre consultas à playlist (5..1440). */
     var syncInterval: Int
-        get() = prefs.getInt("syncInterval", SYNC_DEFAULT).coerceIn(SYNC_MIN, SYNC_MAX)
-        set(v) { prefs.edit().putInt("syncInterval", v.coerceIn(SYNC_MIN, SYNC_MAX)).apply() }
+        get() = clampInterval(prefs.getInt("syncInterval", SYNC_DEFAULT))
+        set(v) { prefs.edit().putInt("syncInterval", clampInterval(v)).apply() }
 
     var favorites: JSONArray
         get() = try { JSONArray(prefs.getString("favorites", "[]")) } catch (e: Exception) { JSONArray() }
@@ -64,10 +64,7 @@ class Config(context: Context) {
     val isConfigured: Boolean get() = origin.isNotEmpty() && token.isNotEmpty()
 
     /** Base REST da API do player para a playlist ativa (null se não configurada). */
-    fun realApi(): String? {
-        if (!isConfigured) return null
-        return origin.trimEnd('/') + "/wp-json/ds-facil/v1/player/" + URLEncoder.encode(token, "UTF-8")
-    }
+    fun realApi(): String? = buildRealApi(origin, token)
 
     fun addFavorite(name: String, url: String) {
         val favs = favorites
@@ -107,5 +104,14 @@ class Config(context: Context) {
          * afora — sem precisar de nenhuma permissão extra. Mesmo truque do app Windows (`os.uptime()`).
          */
         fun bootId(): Long = System.currentTimeMillis() - SystemClock.elapsedRealtime()
+
+        /** Clampa o intervalo de sync em SYNC_MIN..SYNC_MAX. Pura — testável sem Context. */
+        fun clampInterval(v: Int): Int = v.coerceIn(SYNC_MIN, SYNC_MAX)
+
+        /** Monta a rota REST do player, ou null se origin/token estiverem vazios. Pura — testável sem Context. */
+        fun buildRealApi(origin: String, token: String): String? {
+            if (origin.isEmpty() || token.isEmpty()) return null
+            return origin.trimEnd('/') + "/wp-json/ds-facil/v1/player/" + URLEncoder.encode(token, "UTF-8")
+        }
     }
 }

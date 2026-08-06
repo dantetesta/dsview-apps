@@ -28,7 +28,14 @@ class LocalServer(
     private val syncer: Syncer,
 ) : NanoHTTPD("127.0.0.1", 0) {
 
-    private val mediaName = Regex("^[a-f0-9]{40}\\.[a-z0-9]{1,5}$")
+    // O servidor só escuta em 127.0.0.1, mas isso NÃO isola de outros apps no mesmo aparelho —
+    // loopback é um socket comum do sistema, qualquer app com permissão de internet alcança.
+    // Sem isto, qualquer página/app instalado podia chamar /dsf/resolve e trocar a playlist do
+    // kiosk por uma dele, ou /dsf/clear pra apagar o cache, sem o usuário perceber nada. Token
+    // gerado uma vez por processo (não persiste), injetado só na página do setup — /state,
+    // /state/auth e /media continuam abertos porque o player.js do plugin (não é nosso código)
+    // fala com eles direto, sem como ele saber desse token.
+    val sessionToken: String = java.util.UUID.randomUUID().toString()
 
     override fun serve(session: IHTTPSession): Response {
         val uri = session.uri
@@ -39,15 +46,31 @@ class LocalServer(
                 uri == "/state" && method == Method.GET -> serveState()
                 uri == "/state/auth" && method == Method.POST -> proxyAuth(session)
                 uri.startsWith("/media/") && method == Method.GET -> serveMedia(session, uri.removePrefix("/media/"))
-                uri == "/setup" || uri == "/" -> asset("setup.html", "text/html")
+                uri == "/setup" || uri == "/" -> setupHtml()
                 uri == "/player" -> asset("player.html", "text/html")
                 uri.startsWith("/assets/") -> asset(uri.removePrefix("/assets/"), null)
-                uri.startsWith("/dsf/") -> dsf(session, uri.removePrefix("/dsf/"))
+                uri.startsWith("/dsf/") -> {
+                    if (session.headers["x-dsf-token"] != sessionToken)
+                        cors(newFixedLengthResponse(Response.Status.FORBIDDEN, MIME_PLAINTEXT, "forbidden"))
+                    else dsf(session, uri.removePrefix("/dsf/"))
+                }
                 else -> newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
             }
         } catch (e: Exception) {
             newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, e.message ?: "error")
         }
+    }
+
+    /** setup.html recebe o token da sessão injetado — é a única página que fala com /dsf/… */
+    private fun setupHtml(): Response = try {
+        val html = context.assets.open("setup.html").use { it.readBytes().toString(Charsets.UTF_8) }
+        val injected = html.replaceFirst(
+            "<head>",
+            "<head>\n  <script>window.DSF_TOKEN = " + JSONObject.quote(sessionToken) + ";</script>",
+        )
+        cors(newFixedLengthResponse(Response.Status.OK, "text/html", injected))
+    } catch (e: Exception) {
+        newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "asset not found")
     }
 
     // ---------------------------------------------------------------- player API
@@ -88,7 +111,7 @@ class LocalServer(
     }
 
     private fun serveMedia(session: IHTTPSession, name: String): Response {
-        if (!mediaName.matches(name)) return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "")
+        if (!MEDIA_NAME_RE.matches(name)) return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "")
         val file = File(cache.dir(), name)
         if (!file.exists()) return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "")
         val type = mimeOf(name)
@@ -176,7 +199,15 @@ class LocalServer(
                 syncer.restart()
                 json(JSONObject().put("interval", config.syncInterval))
             }
-            "autostart" -> { config.autostart = body.optBoolean("on", false); json(JSONObject().put("autostart", config.autostart)) }
+            // Desligar é pra valer: além do flag, arma a supressão do boot atual (mesma de "Sair"),
+            // então nem o Android reinvocando o app por ele ser a tela inicial do aparelho reabre
+            // antes do próximo boot de verdade. Ligar de novo limpa a supressão.
+            "autostart" -> {
+                val on = body.optBoolean("on", false)
+                config.autostart = on
+                config.quitUntilBoot = if (on) 0L else Config.bootId()
+                json(JSONObject().put("autostart", config.autostart))
+            }
             // Estado real do auto-start: ligar o interruptor não basta no Android 10+.
             "autostart-status" -> json(
                 JSONObject()
@@ -268,7 +299,7 @@ class LocalServer(
         try {
             conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             val stream = if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
-            return JSONObject(stream.bufferedReader().use { it.readText() })
+            return JSONObject(readLimited(stream))
         } finally {
             conn.disconnect()
         }
@@ -287,5 +318,9 @@ class LocalServer(
         "png" -> "image/png"
         "gif" -> "image/gif"
         else -> "application/octet-stream"
+    }
+
+    companion object {
+        val MEDIA_NAME_RE = Regex("^[a-f0-9]{40}\\.[a-z0-9]{1,5}$")
     }
 }

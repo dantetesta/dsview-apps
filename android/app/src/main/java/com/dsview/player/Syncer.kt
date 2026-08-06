@@ -127,7 +127,15 @@ class Syncer(
     fun stop() {
         stopFlag = true
         thread?.interrupt()
+        // `interrupt()` não acorda uma thread bloqueada em I/O de socket (só Thread.sleep) — sem
+        // esperar ela sair de verdade, `restart()` (stop+start) largava uma thread órfã ainda
+        // rodando com `running=true`, e a thread NOVA via essa flag "true" (é a mesma instância de
+        // Syncer) e pulava o primeiro ciclo inteiro — no pior caso, até 24h sem sincronizar depois
+        // de trocar o intervalo. O join espera a antiga realmente terminar (limitado pelos timeouts
+        // de conexão/leitura abaixo) antes de deixar uma nova começar.
+        try { thread?.join(35_000) } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
         thread = null
+        running = false // trava de segurança: se o join estourou o prazo, libera mesmo assim.
     }
 
     private fun result(ok: Boolean, reason: String) = JSONObject().put("ok", ok).put("reason", reason)
@@ -141,7 +149,7 @@ class Syncer(
             requestMethod = "GET"
         }
         try {
-            return JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
+            return JSONObject(readLimited(conn.inputStream))
         } finally {
             conn.disconnect()
         }
@@ -159,9 +167,30 @@ class Syncer(
         try {
             conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
             val stream = if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
-            return JSONObject(stream.bufferedReader().use { it.readText() })
+            return JSONObject(readLimited(stream))
         } finally {
             conn.disconnect()
         }
     }
+}
+
+// Um payload de playlist real não passa de alguns KB — sem limite, um servidor comprometido ou
+// mal configurado devolvendo uma resposta gigante estoura a memória com OutOfMemoryError, que
+// (sendo Error, não Exception) escapa de todo catch (e: Exception) por aqui e derruba o app inteiro.
+internal const val MAX_RESPONSE_BYTES = 5 * 1024 * 1024 // 5 MB — folga generosa sobre o que uma playlist real usa.
+
+internal fun readLimited(stream: java.io.InputStream, maxBytes: Int = MAX_RESPONSE_BYTES): String {
+    val buffer = java.io.ByteArrayOutputStream()
+    val chunk = ByteArray(8192)
+    var total = 0
+    stream.use {
+        while (true) {
+            val n = it.read(chunk)
+            if (n < 0) break
+            total += n
+            if (total > maxBytes) throw java.io.IOException("Resposta maior que $maxBytes bytes")
+            buffer.write(chunk, 0, n)
+        }
+    }
+    return buffer.toString("UTF-8")
 }
