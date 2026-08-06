@@ -10,7 +10,7 @@
 'use strict';
 (function () {
   function $(id) { return document.getElementById(id); }
-  var urlIn = $('url'), err = $('err'), loader = $('loader');
+  var urlIn = $('url'), err = $('err'), loader = $('loader'), domainIn = $('domain'), urlLabel = $('url-label');
   var barFill = $('bar-fill'), loaderTitle = $('loader-title'), loaderSub = $('loader-sub');
 
   // Token de sessão injetado pelo LocalServer só nesta página (ver LocalServer.setupHtml()) — sem
@@ -141,9 +141,23 @@
 
   function syncOfflineOpts() { $('offline-opts').style.opacity = $('offline').checked ? '' : '.45'; }
 
+  // Com domínio configurado, a aba Básico pede só o código — sem ele, ainda aceita o link
+  // completo (Resolver.resolve entende os dois; aqui é só o texto que muda).
+  function syncUrlField(domain) {
+    if (domain) {
+      urlLabel.textContent = 'Código da playlist';
+      urlIn.placeholder = '12345';
+    } else {
+      urlLabel.textContent = 'Link ou código da playlist';
+      urlIn.placeholder = 'https://seusite.com.br/play/xxxx  ou  12345';
+    }
+  }
+
   function init() {
     getJson('/dsf/config').then(function (cfg) {
       if (cfg.lastUrl) urlIn.value = cfg.lastUrl;
+      domainIn.value = cfg.baseDomain || '';
+      syncUrlField(cfg.baseDomain);
       $('autostart').checked = !!cfg.autostart;
       atualizarAutostart();
       $('offline').checked = cfg.offline !== false;
@@ -206,6 +220,13 @@
   };
   $('interval').onchange = function (e) {
     postJson('/dsf/interval', { minutes: parseInt(e.target.value, 10) }).then(function () { showToast('✓ Definições salvas'); });
+  };
+  domainIn.onchange = function () {
+    postJson('/dsf/domain', { value: domainIn.value }).then(function (r) {
+      domainIn.value = r.baseDomain || '';
+      syncUrlField(r.baseDomain);
+      showToast('✓ Definições salvas');
+    });
   };
   $('clear').onclick = function () {
     var btn = $('clear'), label = btn.textContent;

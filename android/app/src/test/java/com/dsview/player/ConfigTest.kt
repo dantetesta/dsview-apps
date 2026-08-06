@@ -47,4 +47,31 @@ class ConfigTest {
             Config.buildRealApi("https://site.com", "a b/c"),
         )
     }
+
+    @Test
+    fun `normalizeDomain vazio devolve vazio`() {
+        assertEquals("", Config.normalizeDomain(""))
+        assertEquals("", Config.normalizeDomain("   "))
+    }
+
+    @Test
+    fun `normalizeDomain aceita dominio nu e assume https`() {
+        assertEquals("https://suaempresa.com.br", Config.normalizeDomain("suaempresa.com.br"))
+    }
+
+    @Test
+    fun `normalizeDomain preserva scheme e porta ja informados`() {
+        assertEquals("http://site.com:8080", Config.normalizeDomain("http://site.com:8080"))
+    }
+
+    @Test
+    fun `normalizeDomain tira caminho e barra final`() {
+        assertEquals("https://site.com", Config.normalizeDomain("https://site.com/play/xxxx"))
+        assertEquals("https://site.com", Config.normalizeDomain("site.com/"))
+    }
+
+    @Test
+    fun `normalizeDomain string invalida devolve vazio`() {
+        assertEquals("", Config.normalizeDomain("não é um domínio"))
+    }
 }

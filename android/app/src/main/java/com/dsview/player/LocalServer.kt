@@ -180,7 +180,10 @@ class LocalServer(
             }
             "resolve" -> {
                 try {
-                    val r = Resolver.resolve(body.optString("input"), config.origin)
+                    // Domínio configurado em Configurações vence — permite digitar só o código da
+                    // playlist. Sem ele, cai no origin da última playlist resolvida (compatibilidade).
+                    val knownOrigin = config.baseDomain.ifEmpty { config.origin }
+                    val r = Resolver.resolve(body.optString("input"), knownOrigin)
                     // Troca de playlist zera o device.
                     config.origin = r.origin
                     config.token = r.token
@@ -190,6 +193,10 @@ class LocalServer(
                 } catch (e: Exception) {
                     json(JSONObject().put("ok", false).put("error", e.message ?: "Falha ao resolver a URL."))
                 }
+            }
+            "domain" -> {
+                config.baseDomain = body.optString("value")
+                json(JSONObject().put("baseDomain", config.baseDomain))
             }
             "authenticate" -> json(syncer.authenticate(body.optString("password")))
             "sync" -> json(syncer.syncOnce())

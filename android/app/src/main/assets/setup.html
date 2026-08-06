@@ -17,7 +17,7 @@
     </header>
 
     <div class="tabs" role="tablist">
-      <button type="button" class="tab-btn active" data-tab="basico" role="tab" aria-selected="true">Básico</button>
+      <button type="button" class="tab-btn active" data-tab="basico" role="tab" aria-selected="true">Início</button>
       <button type="button" class="tab-btn" data-tab="favoritos" role="tab" aria-selected="false">Favoritos</button>
       <button type="button" class="tab-btn" data-tab="config" role="tab" aria-selected="false">Configurações</button>
     </div>
@@ -25,11 +25,11 @@
     <section class="tab-panel" data-panel="basico">
       <div class="form-grid">
         <label class="field iconed url-field">
-          <span>Link ou código da playlist</span>
+          <span id="url-label">Código da playlist</span>
           <span class="input-wrap">
             <span class="input-icon" aria-hidden="true">🔗</span>
             <input id="url" type="text" inputmode="url" autocomplete="off" spellcheck="false" autofocus
-                   placeholder="https://seusite.com.br/play/xxxx  ou  12345" />
+                   placeholder="12345" />
           </span>
         </label>
 
@@ -46,6 +46,7 @@
       <div class="actions">
         <button id="go" class="btn primary">▶ Salvar e iniciar</button>
         <button id="fav" class="btn ghost" title="Favoritar esta URL">☆ Favoritar</button>
+        <button id="clear" class="btn ghost" title="Apagar tudo que está salvo offline e baixar de novo">🗑 Limpar cache</button>
       </div>
     </section>
 
@@ -53,26 +54,39 @@
       <div class="favs">
         <h2>Favoritos</h2>
         <ul id="favs"></ul>
-        <p id="favs-empty" class="favs-empty" hidden>Nenhum favorito ainda. Favorite uma playlist na aba Básico pra ela aparecer aqui.</p>
+        <p id="favs-empty" class="favs-empty" hidden>Nenhum favorito ainda. Favorite uma playlist na aba Início pra ela aparecer aqui.</p>
       </div>
     </section>
 
     <section class="tab-panel" data-panel="config" hidden>
       <div class="prefs-head">
+        <h2>Domínio do sistema</h2>
+      </div>
+
+      <label class="field iconed">
+        <span>Onde sua playlist está hospedada</span>
+        <span class="input-wrap">
+          <span class="input-icon" aria-hidden="true">🌐</span>
+          <input id="domain" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="suaempresa.com.br" />
+        </span>
+      </label>
+      <p class="field-hint">Definido, a aba Início passa a pedir só o código da playlist em vez do link completo.</p>
+
+      <div class="prefs-head">
         <h2>Preferências do aparelho</h2>
       </div>
 
-      <label class="toggle iconed">
-        <input id="offline" type="checkbox" checked />
-        <span class="toggle-icon" aria-hidden="true">☁️</span>
-        <span class="toggle-text">
-          <b>Modo offline</b>
-          <small>Desligado, o conteúdo só é exibido online, sem cache.</small>
-        </span>
-      </label>
+      <div class="prefs-2col">
+        <label class="toggle iconed">
+          <input id="offline" type="checkbox" checked />
+          <span class="toggle-icon" aria-hidden="true">☁️</span>
+          <span class="toggle-text">
+            <b>Modo offline</b>
+            <small>Desligado, o conteúdo só é exibido online, sem cache.</small>
+          </span>
+        </label>
 
-      <div class="offline-extra" id="offline-opts">
-        <label class="field inline iconed">
+        <label class="field iconed" id="offline-opts">
           <span>Checar a playlist a cada</span>
           <span class="input-wrap">
             <span class="input-icon" aria-hidden="true">⏱️</span>
@@ -89,10 +103,6 @@
             </select>
           </span>
         </label>
-        <span class="btn-wrap">
-          <span class="spacer" aria-hidden="true">&nbsp;</span>
-          <button id="clear" class="btn ghost" title="Apagar tudo que está salvo offline e baixar de novo">🗑 Limpar histórico e cache</button>
-        </span>
       </div>
 
       <label class="toggle iconed">

@@ -17,6 +17,15 @@ class Config(context: Context) {
         get() = prefs.getString("origin", "") ?: ""
         set(v) { prefs.edit().putString("origin", v).apply() }
 
+    /**
+     * Domínio do sistema, configurado uma vez em Configurações (ex.: "suaempresa.com.br"). Com ele
+     * definido, a aba Básico aceita só o código da playlist em vez do link completo. Independente do
+     * `origin` (que é o domínio da playlist ATIVA) — permite trocar de playlist sem perder o domínio.
+     */
+    var baseDomain: String
+        get() = prefs.getString("baseDomain", "") ?: ""
+        set(v) { prefs.edit().putString("baseDomain", normalizeDomain(v)).apply() }
+
     var token: String
         get() = prefs.getString("token", "") ?: ""
         set(v) { prefs.edit().putString("token", v).apply() }
@@ -91,7 +100,7 @@ class Config(context: Context) {
         .put("origin", origin).put("token", token).put("device", device)
         .put("favorites", favorites).put("autostart", autostart)
         .put("offline", offline).put("syncInterval", syncInterval).put("lastUrl", lastUrl)
-        .put("lastBootLaunch", lastBootLaunch)
+        .put("lastBootLaunch", lastBootLaunch).put("baseDomain", baseDomain)
 
     companion object {
         const val SYNC_MIN = 5
@@ -112,6 +121,22 @@ class Config(context: Context) {
         fun buildRealApi(origin: String, token: String): String? {
             if (origin.isEmpty() || token.isEmpty()) return null
             return origin.trimEnd('/') + "/wp-json/ds-facil/v1/player/" + URLEncoder.encode(token, "UTF-8")
+        }
+
+        /**
+         * Normaliza o que o usuário digitar em "Domínio do sistema" ("dsview.com.br",
+         * "https://dsview.com.br/", "dsview.com.br:8080"...) para um origin limpo
+         * ("https://dsview.com.br"), ou "" se não der pra interpretar como domínio/URL.
+         * Pura — testável sem Context.
+         */
+        fun normalizeDomain(input: String): String {
+            val t = input.trim()
+            if (t.isEmpty()) return ""
+            val withScheme = if (Regex("^https?://", RegexOption.IGNORE_CASE).containsMatchIn(t)) t else "https://$t"
+            return try {
+                val u = java.net.URL(withScheme)
+                if (u.host.isNullOrEmpty()) "" else u.protocol + "://" + u.authority
+            } catch (e: Exception) { "" }
         }
     }
 }

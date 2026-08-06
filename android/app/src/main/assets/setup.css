@@ -50,22 +50,16 @@ h1 span { color: var(--brand); }
 .tabs { display: -webkit-flex; display: flex; margin: 18px 0 16px; border-bottom: 2px solid var(--line); }
 .tab-btn { -webkit-flex: 1; flex: 1; text-align: center; background: transparent; border: 0;
   border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 10px 6px; cursor: pointer;
-  font: inherit; font-weight: 700; font-size: 14px; color: var(--muted); }
+  font: inherit; font-weight: 700; font-size: 13px; color: var(--muted); }
 .tab-btn.active { color: var(--brand); border-bottom-color: var(--brand); }
 .tab-panel[hidden] { display: none; }
 
-/* Sub-painel do toggle "Modo offline" acima — por isso indentado e sem borda própria, não é uma
-   seção nova, é detalhe de configuração de quem já está logo em cima. */
-.offline-extra { display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end;
-  -webkit-flex-wrap: wrap; flex-wrap: wrap; margin: 10px 0 16px 28px; transition: opacity .15s; }
-.offline-extra > * + * { margin-left: 10px; }
-.offline-extra .field.inline { -webkit-flex: 1 1 180px; flex: 1 1 180px; margin-bottom: 8px; }
-.offline-extra .btn.ghost { margin-bottom: 8px; }
-/* Espaçador invisível do tamanho do rótulo "Checar a playlist a cada" — sem ele, align-items:flex-end
-   só alinha o FUNDO do botão com o fundo do select, e o topo do botão sobra mais baixo que o do campo
-   (o campo tem rótulo em cima, o botão sozinho não tinha nada pra igualar a altura toda). */
-.offline-extra .btn-wrap { display: block; }
-.offline-extra .btn-wrap .spacer { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; visibility: hidden; }
+/* Modo offline + intervalo lado a lado — duas colunas quando cabe, empilha sozinho em tela estreita
+   (mesmo truque de flex-wrap com min-width em vez de grid+gap, que o WebView velho não suporta). */
+.prefs-2col { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap;
+  -webkit-align-items: flex-start; align-items: flex-start; margin: 0 -8px 6px; transition: opacity .15s; }
+.prefs-2col > * { -webkit-box-sizing: border-box; box-sizing: border-box; -webkit-flex: 1 1 220px; flex: 1 1 220px;
+  min-width: 0; margin: 0 8px 16px; }
 
 .field { display: block; margin-bottom: 6px; }
 .field span { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
@@ -80,9 +74,9 @@ h1 span { color: var(--brand); }
 /* Campo e botão do mesmo tamanho: mesma fonte, mesmo padding vertical, mesma borda de 2px em
    TODOS (inclusive os botões, que antes tinham border:0 — a "borda invisível" é o que faz a
    altura bater com input/select, que têm borda real). */
-#url, #password, #interval { width: 100%; font-size: 15px; padding: 13px 14px; border: 2px solid var(--line);
+#url, #password, #interval, #domain { width: 100%; font-size: 15px; padding: 13px 14px; border: 2px solid var(--line);
   border-radius: 12px; outline: none; transition: border-color .15s, box-shadow .15s; }
-#url:focus, #password:focus, #interval:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--tint); }
+#url:focus, #password:focus, #interval:focus, #domain:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--tint); }
 #interval { background: #fff; cursor: pointer; }
 .err { color: #14286b; color: var(--cta); font-size: 13px; font-weight: 600; margin: 8px 0 0; }
 .actions { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; margin-top: 20px; }
@@ -116,10 +110,11 @@ h1 span { color: var(--brand); }
 .toggle-text b { display: block; font-weight: 600; font-size: 14px; }
 .toggle-text small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; font-weight: 400; }
 
-.field.inline { margin: 0 0 10px; }
-
 .prefs-head { margin-bottom: 12px; }
 .prefs-head h2 { font-size: 14px; margin: 0; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.prefs-head ~ .prefs-head { margin-top: 26px; }
+
+.field-hint { margin: -6px 0 22px; font-size: 12px; color: var(--muted); }
 
 .toast { position: fixed; left: 50%; bottom: 22px; -webkit-transform: translateX(-50%); transform: translateX(-50%);
   background: var(--ink); color: #fff; font-size: 13px; font-weight: 600; padding: 10px 18px; border-radius: 999px;
@@ -189,8 +184,7 @@ h1 span { color: var(--brand); }
   h1 { font-size: 27px; }
   .sub { font-size: 16px; }
   .field span { font-size: 15px; }
-  .offline-extra .btn-wrap .spacer { font-size: 15px; }
-  #url, #password, #interval { font-size: 17px; padding: 16px 14px; }
+  #url, #password, #interval, #domain { font-size: 17px; padding: 16px 14px; }
   .btn { font-size: 17px; padding: 16px 18px; }
   .aviso-acoes .btn { font-size: 15px; padding: 13px 16px; }
   .tab-btn { font-size: 15px; padding: 12px 8px; }
