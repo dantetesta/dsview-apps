@@ -1,5 +1,7 @@
 # DS View — apps para TV
 
+![DS View — Android e Windows, o mesmo protocolo aberto para sinalização digital](cover.png)
+
 **DS View** é um player de sinalização digital para TV/totem: abre uma playlist em tela cheia, baixa o
 conteúdo para o aparelho e continua tocando mesmo sem internet. Código aberto, para qualquer backend que
 implemente o contrato de API descrito abaixo — não é preso a nenhum produto específico.
