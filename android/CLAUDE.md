@@ -2,9 +2,17 @@
 
 App **kiosk offline Android** (Kotlin + WebView), irmão do `../dsview` (Windows/Electron). Roda em
 **qualquer Android** incluindo **Android TV**. Mesma arquitetura **cache-proxy**: servidor local espelha a API do
-player, loop de sync espelha a mídia no disco. **v0.2.0 — MVP + release de compatibilidade/diagnóstico
-(28/07/2026), depois de o cliente relatar "instala mas não abre" num TV box Android 10.**
-Repo git próprio, **privado**. Faz parte do guarda-chuva `Projetos/DSFácil/`.
+player, loop de sync espelha a mídia no disco. **v0.4.0** (a v0.2.0 abaixo foi o release de compatibilidade/
+diagnóstico de 28/07/2026, depois de o cliente relatar "instala mas não abre" num TV box Android 10; a lógica
+descrita continua valendo, só o número do topo estava parado).
+Repo git compartilhado com o app Windows (`dsview-apps/`, monorepo), **PÚBLICO** (`github.com/dantetesta/dsview-apps`)
+— é justamente por ser público que o `player.js` copiado tem a marca removida (ver Gotchas de build). Faz parte do
+guarda-chuva `Projetos/DSFácil/`.
+
+**Único app de TV mantido (desde 05/08/2026).** Existia um irmão com a marca DS Fácil (`dsfacil-apps`) que foi
+**descontinuado e arquivado** — o dono do `dsfacil.com.br` e qualquer comprador do plugin usam este mesmo
+binário agora, não dois projetos em paralelo. Ícone/banner/logo em uso vêm da marca DS View oficial (arte em
+`app/src/main/assets/logo-mark.png` + `res/mipmap-*`), não são mais placeholder.
 
 ## Stack / build
 - **Kotlin**, **AGP 8.6.1**, **Gradle 8.7** (wrapper), **Kotlin 1.9.24**, **compileSdk 35 / minSdk 21 / targetSdk 34**.
@@ -70,13 +78,18 @@ O APK sempre esteve tecnicamente compatível (`minSdk 21`, `targetSdk 34`, sem l
 - **Kotlin ANINHA comentários de bloco.** Um `/*` dentro de um KDoc `/** */` (ex.: escrever `/dsf/*` ou `/assets/*`)
   abre um comentário aninhado que não fecha → "Unclosed comment". Evite `/…/*` em KDoc (usei `/dsf/…`).
 - **`val` não pode ser atribuído em `try` E `catch`** (o try pode atribuir e depois lançar). Reestruturar sem os dois ramos.
-- Ícone/banner são **vetores** (`res/drawable/ic_launcher.xml`, `tv_banner.xml`) e o `android:icon` aponta pra
-  `@drawable` (não `@mipmap`) pra funcionar em minSdk 21 sem PNGs por densidade.
+- Ícone/banner **já são arte final** (PNG por densidade em `res/mipmap-*/ic_launcher*.png` + adaptive-icon em
+  `mipmap-anydpi-v26/`, banner em `res/drawable-nodpi/tv_banner.png`; `android:icon` aponta `@mipmap`, só o banner
+  usa `@drawable`) — não é mais vetor placeholder.
+- **Copy do player é branqueado por linha** (`copyPlayer` no `build.gradle.kts`): qualquer linha que, sem espaços nas
+  pontas, começa com `/*` ou `*` vira `""`. Sem estado entre linhas, mesma closure pros dois arquivos — confirmado que
+  nenhuma linha real de código do plugin começa assim, então o filtro não corrompe nada. Zero string de marca
+  (`Dante`, `dantetesta`, `DS Fácil`) sobrevive na cópia.
 
 ## Backlog aberto
-- Testar em **Android real + Android TV** (kiosk, controle/DPAD no setup, auto-start no boot, offline, só-online).
-- Ícone/arte definitivos (hoje é um vetor placeholder laranja) e **assinatura de release** (`assembleRelease` sai não assinado).
-- Navegação por controle (DPAD) no setup (inputs/botões precisam ser focáveis — testar/ajustar em TV).
+- Testar em **Android real + Android TV** (kiosk, auto-start no boot, offline, só-online).
+- **Assinatura de release** (`assembleRelease` sai não assinado) — único item de empacotamento ainda aberto.
+- DPAD no setup já tem base (`isFocusable`+`tabIndex=0`+`onkeydown` Enter em `setup.js`); falta só validar em TV real.
 - Considerar `WorkManager`/foreground service pra o sync sobreviver melhor em background em Androids restritivos.
 
 > Este `CLAUDE.md` é doc de dev (não vai em build de release).

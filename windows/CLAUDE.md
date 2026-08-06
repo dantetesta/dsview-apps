@@ -2,15 +2,21 @@
 
 App **kiosk offline** (Electron 31, Windows 10/11 x64). Uma casca full-screen sem barra de URL em volta do
 **player do plugin DS View**, com **cache local** que espelha o conteúdo online no disco — a TV segue tocando
-mesmo sem internet. Repo git próprio (`main`), separado do plugin. **v0.1.0 — MVP codado, ainda não testado em
-Windows real nem empacotado.**
+mesmo sem internet. Repo git compartilhado com o app Android (`dsview-apps/`, monorepo), separado do plugin,
+**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.3.0 — já empacotado** (`dist/DS View Setup 0.3.0.exe`
+existe); falta validar em Windows real.
 
 > Faz parte do guarda-chuva `Projetos/DSFácil/`. O produto é o plugin (`../ds-facil/`, tem o CLAUDE.md detalhado).
 > Este app **consome os endpoints públicos que já existem** no plugin — não exige nenhuma mudança nele.
 
+**Único app de TV mantido (desde 05/08/2026).** Existia um irmão com a marca DS Fácil (`dsfacil-apps`) que foi
+**descontinuado e arquivado** — o dono do `dsfacil.com.br` e qualquer comprador do plugin usam este mesmo
+binário agora. Ícone/logo em uso vêm da marca DS View oficial (`src/renderer/logo-mark.png` +
+`assets/icon.ico`/`icon.png`), não são mais placeholder.
+
 ## Stack
 
-- **Electron 31.7** (main process Node + renderer Chromium), **electron-builder 24** (NSIS + portable, x64).
+- **Electron 31.7** (main process Node + renderer Chromium), **electron-builder 24** (NSIS, x64, sem portable).
 - **Zero dependências de runtime.** Só `http`/`fs`/`crypto`/`path` do Node + `net`/`app`/`BrowserWindow` do Electron.
 - Player em JS puro (copiado do plugin). Sem framework, sem bundler.
 
@@ -46,7 +52,7 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
                             (preload)          config.js  JSON em userData (origin/token/device/favs/autostart)
   player.html injeta:                          resolve.js input colado → {origin, token} (segue 302)
     window.DSF_PLAYER = {api:127.0.0.1/state}  server.js  HTTP local: /state, /state/auth, /media/{hash}
-  player.js (cópia do plugin) ──fetch──→ ↑     sync.js    loop 30s: busca payload real → baixa/poda → last-good
+  player.js (cópia do plugin) ──fetch──→ ↑     sync.js    loop a cada syncInterval (padrão 60 min): busca payload real → baixa/poda → last-good
                                                cache.js   download atômico .part→rename, sha1(url), prune
                                                state.js   "última versão boa" (payload original) → last-good.json
 ```
@@ -63,7 +69,7 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
 | `src/main/sync.js` | O coração do offline. `syncOnce()`: busca o payload real; se `version` mudou, baixa mídia nova, **depois** grava last-good e poda. No modo só-online retorna `online-only` sem baixar. Loop com intervalo de `config.syncIntervalMin()`, `restart()` reagenda ao trocar o intervalo, **nunca lança** (não pode morrer). |
 | `src/main/resolve.js` | Resolve o que o usuário cola → `{origin, token}`. Aceita link `/play/{token}`, código curto (segue o 302 até o `/play/`), ou código + origin conhecido. Usa o `net` do Electron (respeita proxy do SO). |
 | `src/preload.js` | Bridge segura. Expõe **só** `window.dsf.*` ao renderer (nada de Node solto). |
-| `src/renderer/setup.*` | Tela de configuração: cola URL → `resolveSave` → `favAdd` → `syncNow` (preloader) → `play`. Favoritos, toggle de auto-start. |
+| `src/renderer/setup.*` | Tela de configuração: cola URL → `resolveSave` → `favAdd` → `authenticate(senha)` (dispara `syncOnce()` por dentro) → `play`. Favoritos, toggle de auto-start. `syncNow`/IPC `sync:now` existe no preload mas hoje não é chamado por nenhuma UI (código morto). |
 | `src/renderer/player.html` | Injeta `window.DSF_PLAYER = {api:'http://127.0.0.1:{port}/state', token}` e carrega o `player.js`. |
 | `src/renderer/player.js` · `player.css` | **CÓPIA do plugin — gitignorada, NÃO editar aqui.** Ver "Regras de domínio". |
 | `scripts/copy-player.js` | Copia `player.js`/`player.css` de `../../ds-facil/player/` → `src/renderer/`. Roda em `npm start`/`dist`. Se o plugin não estiver ao lado, avisa mas não trava o build. |
@@ -117,6 +123,15 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
    `routeStartup` manda pro setup quando offline **sem** device, e a senha é autenticada lá (`sync.authenticate`).
 10. **Áudio precisa de DUAS coisas:** o switch `autoplay-policy` no Electron **e** o gesto sintético no `player.html`
     (o `player.js` só desmuta quando seu `audioOn` vira true, e isso exige um "click"). Um sem o outro = mudo.
+11. **`scripts/copy-player.js` branqueia TODA linha de comentário do player, não só o cabeçalho de marca** — qualquer
+    linha (sem espaço nas pontas) que começa com `/*` ou `*` vira `""`, inclusive diretivas de lint no meio do arquivo
+    (`/* global YT */` etc.). Inofensivo hoje, mas se o plugin ganhar um comentário mid-file que importe, ele some
+    silenciosamente na cópia branca.
+12. **O slug `ds-facil` (a origem) continua vazando, e não tem como evitar.** `config.js` monta a URL real como
+    `origin + '/wp-json/ds-facil/v1/player/' + token` — é a rota REST fixa do plugin, então o literal `ds-facil`
+    fica no `app.asar` do instalador público (confirmado via `strings` no `.asar` empacotado). Não é uma falha do
+    stripping — é a única forma de string de marca que o white-label não consegue esconder, porque é o contrato
+    de API em si, não um comentário.
 
 ## Como rodar / buildar
 
@@ -127,7 +142,7 @@ npm run dist         # instalador NSIS com wizard (.exe) em dist/ (Windows x64) 
 npm run dist:dir     # build sem empacotar (dist/win-unpacked) — teste rápido
 ```
 
-- Ícone: colocar `assets/icon.ico` (256×256) e descomentar `icon:` no `electron-builder.yml`. Sem assinatura de
+- Ícone já é definitivo (`assets/icon.ico` real + `icon:` ativo no `electron-builder.yml`). Sem assinatura de
   código, o Windows mostra o aviso do SmartScreen na 1ª execução.
 - **`npm run dist` gera só o instalador NSIS com wizard** (`dist/DS View Setup {ver}.exe`), sem portable.
   Buildou no macOS sem Wine (electron-builder 24 resolve o NSIS sozinho). Assinatura de código, se for querer, pede
@@ -136,7 +151,7 @@ npm run dist:dir     # build sem empacotar (dist/win-unpacked) — teste rápido
 ## Backlog aberto (fase 2)
 
 - **Testar em Windows real** (kiosk, auto-start no boot, single-instance, anti-sleep, modo só-online) e validar o instalador.
-- Ícone / arte (`assets/icon.ico`) e assinatura de código (tirar o SmartScreen).
+- Assinatura de código (tirar o SmartScreen) — ícone/arte já resolvidos.
 - Auto-update (`electron-updater`) — hoje a atualização é manual.
 - Tratar `status:'password'`/`'expired'` na casca (hoje quem lida é o `player.js`; UX de kiosk pode querer um aviso).
 
