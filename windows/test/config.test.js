@@ -73,3 +73,25 @@ test('read: JSON corrompido no disco cai nos DEFAULTS em vez de lançar', () => 
   assert.equal(read.origin, '');
   assert.equal(read.offline, true);
 });
+
+test('normalizeDomain: vazio devolve vazio', () => {
+  assert.equal(config.normalizeDomain(''), '');
+  assert.equal(config.normalizeDomain('   '), '');
+});
+
+test('normalizeDomain: aceita domínio nu e assume https', () => {
+  assert.equal(config.normalizeDomain('suaempresa.com.br'), 'https://suaempresa.com.br');
+});
+
+test('normalizeDomain: preserva scheme e porta já informados', () => {
+  assert.equal(config.normalizeDomain('http://site.com:8080'), 'http://site.com:8080');
+});
+
+test('normalizeDomain: tira caminho e barra final', () => {
+  assert.equal(config.normalizeDomain('https://site.com/play/xxxx'), 'https://site.com');
+  assert.equal(config.normalizeDomain('site.com/'), 'https://site.com');
+});
+
+test('normalizeDomain: string inválida devolve vazio', () => {
+  assert.equal(config.normalizeDomain('não é um domínio'), '');
+});

@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('dsf', {
   autostartStatus: () => ipcRenderer.invoke('autostart:status'),
   setOffline: (on) => ipcRenderer.invoke('offline:set', on),
   setInterval: (m) => ipcRenderer.invoke('interval:set', m),
+  setDomain: (v) => ipcRenderer.invoke('domain:set', v),
   clearCache: () => ipcRenderer.invoke('cache:clear'),
   onSyncStatus: (cb) => ipcRenderer.on('sync:status', (_e, s) => cb(s)),
 });

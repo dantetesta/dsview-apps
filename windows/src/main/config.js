@@ -23,6 +23,9 @@ const DEFAULTS = {
   syncInterval: SYNC_DEFAULT, // minutos entre consultas à playlist (5..1440)
   lastUrl: '', // última URL colada no setup (para reexibir)
   quitUntilBoot: null, // boot-id em que o usuário fechou de propósito (ver bootId() no main.js)
+  baseDomain: '', // domínio do sistema (ex.: https://suaempresa.com.br), configurado 1x no setup.
+  // Com ele definido, o setup aceita só o código da playlist em vez do link completo. Independente
+  // do `origin` (que é o domínio da playlist ATIVA) — trocar de playlist não perde o domínio.
 };
 
 /** Intervalo de sync em minutos, sempre dentro dos limites (5..1440). */
@@ -71,4 +74,23 @@ function realApi(cfg) {
   return cfg.origin.replace(/\/$/, '') + '/wp-json/ds-facil/v1/player/' + encodeURIComponent(cfg.token);
 }
 
-module.exports = { read, write, realApi, syncIntervalMin, setSyncInterval, FILE, SYNC_MIN, SYNC_MAX, SYNC_DEFAULT };
+/**
+ * Normaliza o que o usuário digitar em "Domínio do sistema" ("suaempresa.com.br",
+ * "https://suaempresa.com.br/", "site.com:8080"...) para um origin limpo
+ * ("https://suaempresa.com.br"), ou '' se não der pra interpretar como domínio/URL.
+ */
+function normalizeDomain(input) {
+  const t = String(input || '').trim();
+  if (!t) return '';
+  const withScheme = /^https?:\/\//i.test(t) ? t : 'https://' + t;
+  try {
+    const u = new URL(withScheme);
+    return u.host ? u.origin : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+module.exports = {
+  read, write, realApi, normalizeDomain, syncIntervalMin, setSyncInterval, FILE, SYNC_MIN, SYNC_MAX, SYNC_DEFAULT,
+};

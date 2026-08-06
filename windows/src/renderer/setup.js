@@ -5,7 +5,7 @@
 'use strict';
 (function () {
   const $ = (id) => document.getElementById(id);
-  const urlIn = $('url'), err = $('err'), loader = $('loader');
+  const urlIn = $('url'), err = $('err'), loader = $('loader'), domainIn = $('domain'), urlLabel = $('url-label');
   const barFill = $('bar-fill'), loaderTitle = $('loader-title'), loaderSub = $('loader-sub');
 
   function showErr(msg) { err.textContent = msg; err.hidden = !msg; }
@@ -90,9 +90,23 @@
 
   function syncOfflineOpts() { $('offline-opts').style.opacity = $('offline').checked ? '' : '.45'; }
 
+  // Com domínio configurado, a aba Básico pede só o código — sem ele, ainda aceita o link
+  // completo (resolve.js entende os dois; aqui é só o texto que muda).
+  function syncUrlField(domain) {
+    if (domain) {
+      urlLabel.textContent = 'Código da playlist';
+      urlIn.placeholder = '12345';
+    } else {
+      urlLabel.textContent = 'Link ou código da playlist';
+      urlIn.placeholder = 'https://seusite.com.br/play/xxxx  ou  12345';
+    }
+  }
+
   async function init() {
     const cfg = await dsf.getConfig();
     if (cfg.lastUrl) urlIn.value = cfg.lastUrl;
+    domainIn.value = cfg.baseDomain || '';
+    syncUrlField(cfg.baseDomain);
     $('autostart').checked = !!cfg.autostart;
     atualizarAutostart();
     $('offline').checked = cfg.offline !== false;
@@ -173,6 +187,12 @@
   }
   $('offline').onchange = (e) => { dsf.setOffline(e.target.checked); syncOfflineOpts(); showToast('✓ Definições salvas'); };
   $('interval').onchange = (e) => { dsf.setInterval(parseInt(e.target.value, 10)); showToast('✓ Definições salvas'); };
+  domainIn.onchange = async () => {
+    const baseDomain = await dsf.setDomain(domainIn.value);
+    domainIn.value = baseDomain || '';
+    syncUrlField(baseDomain);
+    showToast('✓ Definições salvas');
+  };
   $('clear').onclick = async () => {
     const btn = $('clear'), label = btn.textContent;
     btn.disabled = true; btn.textContent = 'Limpando…';

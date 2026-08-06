@@ -180,12 +180,22 @@ function wireIpc() {
 
   ipcMain.handle('cfg:resolve-save', async (_e, input) => {
     try {
-      const { origin, token } = await resolve.resolve(input, config.read().origin);
+      const cfg = config.read();
+      // Domínio configurado em Configurações vence — permite digitar só o código da playlist.
+      // Sem ele, cai no origin da última playlist resolvida (compatibilidade).
+      const knownOrigin = cfg.baseDomain || cfg.origin;
+      const { origin, token } = await resolve.resolve(input, knownOrigin);
       config.write({ origin, token, device: '', lastUrl: String(input || '') }); // troca de playlist zera o device.
       return { ok: true, origin, token };
     } catch (err) {
       return { ok: false, error: err.message || 'Falha ao resolver a URL.' };
     }
+  });
+
+  ipcMain.handle('domain:set', (_e, value) => {
+    const baseDomain = config.normalizeDomain(value);
+    config.write({ baseDomain });
+    return baseDomain;
   });
 
   ipcMain.handle('sync:now', async () => {
