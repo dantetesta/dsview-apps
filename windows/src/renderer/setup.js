@@ -11,6 +11,22 @@
   function showErr(msg) { err.textContent = msg; err.hidden = !msg; }
   function showLoader(on) { loader.hidden = !on; }
 
+  // Feedback visual do autosave: os toggles/seletor de preferências salvam sozinhos (sem passar
+  // pelo botão "Salvar e iniciar"), então sem isso o usuário não tem como saber que já gravou.
+  const toast = $('toast');
+  let toastTimer = null;
+  function showToast(msg) {
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.hidden = false;
+    toast.className = 'toast show';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.className = 'toast';
+      setTimeout(() => { toast.hidden = true; }, 250);
+    }, 1600);
+  }
+
   // Progresso do download vindo do main.
   dsf.onSyncStatus((s) => {
     if (!s) return;
@@ -52,9 +68,9 @@
 
   async function renderFavs() {
     const favs = await dsf.favList();
-    const wrap = $('favs-wrap'), ul = $('favs');
+    const ul = $('favs'), empty = $('favs-empty');
     ul.innerHTML = '';
-    wrap.hidden = !favs.length;
+    if (empty) empty.hidden = !!favs.length;
     for (const f of favs) {
       const li = document.createElement('li');
       const name = document.createElement('span');
@@ -116,6 +132,7 @@
     if (e.target.checked && !aceito) {
       e.target.checked = false; // o Windows recusou (política/antivírus): não mentir para o usuário
     }
+    showToast('✓ Definições salvas');
     atualizarAutostart();
   };
 
@@ -154,8 +171,8 @@
       /* sem status: o interruptor continua funcionando */
     }
   }
-  $('offline').onchange = (e) => { dsf.setOffline(e.target.checked); syncOfflineOpts(); };
-  $('interval').onchange = (e) => dsf.setInterval(parseInt(e.target.value, 10));
+  $('offline').onchange = (e) => { dsf.setOffline(e.target.checked); syncOfflineOpts(); showToast('✓ Definições salvas'); };
+  $('interval').onchange = (e) => { dsf.setInterval(parseInt(e.target.value, 10)); showToast('✓ Definições salvas'); };
   $('clear').onclick = async () => {
     const btn = $('clear'), label = btn.textContent;
     btn.disabled = true; btn.textContent = 'Limpando…';
@@ -163,6 +180,21 @@
     btn.textContent = `Limpo (${r.removed || 0} arquivos)`;
     setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 2500);
   };
+
+  // Abas Básico/Configurações: troca simples de classe + hidden, sem framework.
+  (function initTabs() {
+    const tabs = document.querySelectorAll('.tab-btn');
+    const panels = document.querySelectorAll('.tab-panel');
+    function select(tab) {
+      tabs.forEach((t) => {
+        t.className = t === tab ? 'tab-btn active' : 'tab-btn';
+        t.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+      });
+      const name = tab.getAttribute('data-tab');
+      panels.forEach((p) => { p.hidden = p.getAttribute('data-panel') !== name; });
+    }
+    tabs.forEach((t) => { t.onclick = () => select(t); });
+  })();
 
   init();
 })();

@@ -13,19 +13,39 @@
   var urlIn = $('url'), err = $('err'), loader = $('loader');
   var barFill = $('bar-fill'), loaderTitle = $('loader-title'), loaderSub = $('loader-sub');
 
+  // Token de sessão injetado pelo LocalServer só nesta página (ver LocalServer.setupHtml()) — sem
+  // ele, o servidor local recusa qualquer /dsf/* com 403. Impede que outro app/página no aparelho
+  // chame a API de configuração do kiosk (trocar playlist, apagar cache) por trás.
+  var DSF_TOKEN = (typeof window.DSF_TOKEN === 'string') ? window.DSF_TOKEN : '';
+
   function getJson(p) {
-    return fetch(p, { cache: 'no-store' }).then(function (r) { return r.json(); });
+    return fetch(p, { cache: 'no-store', headers: { 'X-Dsf-Token': DSF_TOKEN } }).then(function (r) { return r.json(); });
   }
   function postJson(p, obj) {
     return fetch(p, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Dsf-Token': DSF_TOKEN },
       body: JSON.stringify(obj || {})
     }).then(function (r) { return r.json(); });
   }
 
   function showErr(msg) { err.textContent = msg; err.hidden = !msg; }
   function showLoader(on) { loader.hidden = !on; }
+
+  // Feedback visual do autosave: os toggles/seletor de preferências salvam sozinhos (sem passar
+  // pelo botão "Salvar e iniciar"), então sem isso o usuário não tem como saber que já gravou.
+  var toast = $('toast'), toastTimer = null;
+  function showToast(msg) {
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.hidden = false;
+    toast.className = 'toast show';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      toast.className = 'toast';
+      setTimeout(function () { toast.hidden = true; }, 250);
+    }, 1600);
+  }
 
   // Progresso do download (polling do status enquanto autentica/sincroniza).
   function pollStatus() {
@@ -86,9 +106,9 @@
   function renderFavs() {
     getJson('/dsf/favorites').then(function (data) {
       var favs = (data && data.favorites) || [];
-      var wrap = $('favs-wrap'), ul = $('favs');
+      var ul = $('favs'), empty = $('favs-empty');
       ul.innerHTML = '';
-      wrap.hidden = !favs.length;
+      if (empty) empty.hidden = !!favs.length;
       for (var i = 0; i < favs.length; i++) {
         montaFavorito(ul, favs[i]);
       }
@@ -144,7 +164,10 @@
     postJson('/dsf/favorites', { name: v, url: v }).then(renderFavs);
   };
   $('autostart').onchange = function (e) {
-    postJson('/dsf/autostart', { on: e.target.checked }).then(atualizarAutostart);
+    postJson('/dsf/autostart', { on: e.target.checked }).then(function () {
+      showToast('✓ Definições salvas');
+      atualizarAutostart();
+    });
   };
 
   /**
@@ -161,8 +184,8 @@
       ok.hidden = !(st.autostart && !precisa);
       if (st.autostart && !precisa) {
         ok.textContent = st.isHome
-          ? 'Auto-start garantido: este app é a tela inicial do aparelho.'
-          : 'Auto-start configurado (permissão de sobreposição concedida).';
+          ? 'Abertura automática garantida: este app é a tela inicial do aparelho.'
+          : 'Abertura automática configurada (permissão de sobreposição concedida).';
       }
       if (st.ultimoBoot) {
         ok.textContent = (ok.textContent || '') + ' Último boot: ' + st.ultimoBoot + '.';
@@ -178,11 +201,11 @@
     if (!document.hidden) atualizarAutostart(); // voltou da tela do sistema: reavalia
   });
   $('offline').onchange = function (e) {
-    postJson('/dsf/offline', { on: e.target.checked });
+    postJson('/dsf/offline', { on: e.target.checked }).then(function () { showToast('✓ Definições salvas'); });
     syncOfflineOpts();
   };
   $('interval').onchange = function (e) {
-    postJson('/dsf/interval', { minutes: parseInt(e.target.value, 10) });
+    postJson('/dsf/interval', { minutes: parseInt(e.target.value, 10) }).then(function () { showToast('✓ Definições salvas'); });
   };
   $('clear').onclick = function () {
     var btn = $('clear'), label = btn.textContent;
@@ -193,6 +216,25 @@
       setTimeout(function () { btn.textContent = label; btn.disabled = false; }, 2500);
     });
   };
+
+  // Abas Básico/Configurações: troca simples de classe + hidden, sem framework.
+  (function initTabs() {
+    var tabs = document.querySelectorAll('.tab-btn');
+    var panels = document.querySelectorAll('.tab-panel');
+    function select(tab) {
+      for (var i = 0; i < tabs.length; i++) {
+        tabs[i].className = tabs[i] === tab ? 'tab-btn active' : 'tab-btn';
+        tabs[i].setAttribute('aria-selected', tabs[i] === tab ? 'true' : 'false');
+      }
+      var name = tab.getAttribute('data-tab');
+      for (var j = 0; j < panels.length; j++) {
+        panels[j].hidden = panels[j].getAttribute('data-panel') !== name;
+      }
+    }
+    for (var k = 0; k < tabs.length; k++) {
+      tabs[k].onclick = (function (t) { return function () { select(t); }; })(tabs[k]);
+    }
+  })();
 
   init();
 })();

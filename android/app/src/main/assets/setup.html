@@ -9,79 +9,121 @@
 <body>
   <main class="card">
     <header class="head">
-      <div class="logo">▶</div>
-      <div>
-        <h1>DS<span>View</span></h1>
-        <p class="sub">Cole o link (ou o código) da playlist para esta tela.</p>
+      <div class="brand-row">
+        <img class="logo" src="/assets/logo-mark.png" alt="DS View" />
+        <h1>DS <span>View</span></h1>
       </div>
+      <p class="sub">Configure sua playlist e inicie a exibição do conteúdo.</p>
     </header>
 
-    <label class="field">
-      <span>Link ou código da playlist</span>
-      <input id="url" type="text" inputmode="url" autocomplete="off" spellcheck="false" autofocus
-             placeholder="https://seusite.com.br/play/xxxx  ou  12345" />
-    </label>
-
-    <label class="field">
-      <span>Senha da playlist <em>(deixe em branco se não tiver)</em></span>
-      <input id="password" type="password" autocomplete="off" spellcheck="false" placeholder="Senha" />
-    </label>
-    <p id="err" class="err" hidden></p>
-
-    <div class="actions">
-      <button id="go" class="btn primary">Salvar e iniciar</button>
-      <button id="fav" class="btn ghost" title="Favoritar esta URL">★ Favoritar</button>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab-btn active" data-tab="basico" role="tab" aria-selected="true">Básico</button>
+      <button type="button" class="tab-btn" data-tab="favoritos" role="tab" aria-selected="false">Favoritos</button>
+      <button type="button" class="tab-btn" data-tab="config" role="tab" aria-selected="false">Configurações</button>
     </div>
 
-    <section class="favs" id="favs-wrap" hidden>
-      <h2>Favoritos</h2>
-      <ul id="favs"></ul>
+    <section class="tab-panel" data-panel="basico">
+      <div class="form-grid">
+        <label class="field iconed url-field">
+          <span>Link ou código da playlist</span>
+          <span class="input-wrap">
+            <span class="input-icon" aria-hidden="true">🔗</span>
+            <input id="url" type="text" inputmode="url" autocomplete="off" spellcheck="false" autofocus
+                   placeholder="https://seusite.com.br/play/xxxx  ou  12345" />
+          </span>
+        </label>
+
+        <label class="field iconed pass-field">
+          <span>Senha <em>(opcional)</em></span>
+          <span class="input-wrap">
+            <span class="input-icon" aria-hidden="true">🔒</span>
+            <input id="password" type="password" autocomplete="off" spellcheck="false" placeholder="•••••" />
+          </span>
+        </label>
+      </div>
+      <p id="err" class="err" hidden></p>
+
+      <div class="actions">
+        <button id="go" class="btn primary">▶ Salvar e iniciar</button>
+        <button id="fav" class="btn ghost" title="Favoritar esta URL">☆ Favoritar</button>
+      </div>
     </section>
 
-    <label class="toggle">
-      <input id="autostart" type="checkbox" />
-      <span>Abrir automaticamente quando a TV/aparelho ligar (kiosk desatendido)</span>
-    </label>
-
-    <div id="autostart-aviso" class="aviso" hidden>
-      <p><b>Falta um passo para ligar sozinho.</b> A partir do Android 10 o sistema bloqueia um app de
-        abrir a tela sozinho depois que o aparelho liga. Escolha um caminho:</p>
-      <div class="aviso-acoes">
-        <button id="btn-home" class="btn primary" type="button">Usar como tela inicial (recomendado)</button>
-        <button id="btn-overlay" class="btn ghost" type="button">Permitir sobreposição</button>
+    <section class="tab-panel" data-panel="favoritos" hidden>
+      <div class="favs">
+        <h2>Favoritos</h2>
+        <ul id="favs"></ul>
+        <p id="favs-empty" class="favs-empty" hidden>Nenhum favorito ainda. Favorite uma playlist na aba Básico pra ela aparecer aqui.</p>
       </div>
-      <p class="aviso-nota">Como tela inicial, o aparelho abre o DS View sempre que liga, sem depender de
-        permissão. Dá para voltar atrás nas configurações de apps padrão do Android.</p>
-    </div>
-    <p id="autostart-ok" class="aviso-ok" hidden>Auto-start configurado.</p>
+    </section>
 
-    <label class="toggle">
-      <input id="offline" type="checkbox" checked />
-      <span>Modo offline (baixa e toca do cache local). Desligado, consome só o servidor online.</span>
-    </label>
+    <section class="tab-panel" data-panel="config" hidden>
+      <div class="prefs-head">
+        <h2>Preferências do aparelho</h2>
+      </div>
 
-    <div class="row" id="offline-opts">
-      <label class="field inline">
-        <span>Checar a playlist a cada</span>
-        <select id="interval">
-          <option value="5">5 minutos</option>
-          <option value="10">10 minutos</option>
-          <option value="15">15 minutos</option>
-          <option value="30">30 minutos</option>
-          <option value="60" selected>1 hora (padrão)</option>
-          <option value="120">2 horas</option>
-          <option value="360">6 horas</option>
-          <option value="720">12 horas</option>
-          <option value="1440">24 horas</option>
-        </select>
+      <label class="toggle iconed">
+        <input id="offline" type="checkbox" checked />
+        <span class="toggle-icon" aria-hidden="true">☁️</span>
+        <span class="toggle-text">
+          <b>Modo offline</b>
+          <small>Desligado, o conteúdo só é exibido online, sem cache.</small>
+        </span>
       </label>
-      <button id="clear" class="btn ghost" title="Apagar tudo que está salvo offline e baixar de novo">🗑 Limpar dados offline</button>
-    </div>
 
-    <footer class="foot">
-      Botão <b>Voltar</b> ou <b>Menu</b> do controle reabre estas opções (Configurações / Recarregar / Sair).
+      <div class="offline-extra" id="offline-opts">
+        <label class="field inline iconed">
+          <span>Checar a playlist a cada</span>
+          <span class="input-wrap">
+            <span class="input-icon" aria-hidden="true">⏱️</span>
+            <select id="interval">
+              <option value="5">5 minutos</option>
+              <option value="10">10 minutos</option>
+              <option value="15">15 minutos</option>
+              <option value="30">30 minutos</option>
+              <option value="60" selected>1 hora (padrão)</option>
+              <option value="120">2 horas</option>
+              <option value="360">6 horas</option>
+              <option value="720">12 horas</option>
+              <option value="1440">24 horas</option>
+            </select>
+          </span>
+        </label>
+        <span class="btn-wrap">
+          <span class="spacer" aria-hidden="true">&nbsp;</span>
+          <button id="clear" class="btn ghost" title="Apagar tudo que está salvo offline e baixar de novo">🗑 Limpar histórico e cache</button>
+        </span>
+      </div>
+
+      <label class="toggle iconed">
+        <input id="autostart" type="checkbox" />
+        <span class="toggle-icon" aria-hidden="true">📺</span>
+        <span class="toggle-text">
+          <b>Abrir automaticamente quando a TV/aparelho ligar</b>
+          <small>Inicia sozinho assim que o aparelho é ligado.</small>
+        </span>
+      </label>
+
+      <div id="autostart-aviso" class="aviso" hidden>
+        <p><b>Falta um passo para ligar sozinho.</b> A partir do Android 10 o sistema bloqueia um app de
+          abrir a tela sozinho depois que o aparelho liga. Escolha um caminho:</p>
+        <div class="aviso-acoes">
+          <button id="btn-home" class="btn primary" type="button">Usar como tela inicial (recomendado)</button>
+          <button id="btn-overlay" class="btn ghost" type="button">Permitir sobreposição</button>
+        </div>
+        <p class="aviso-nota">Como tela inicial, o aparelho abre o DS View sempre que liga, sem depender de
+          permissão. Dá para voltar atrás nas configurações de apps padrão do Android.</p>
+      </div>
+      <p id="autostart-ok" class="aviso-ok" hidden>Abertura automática configurada.</p>
+    </section>
+
+    <footer class="foot split">
+      <span>Botão <b>Voltar</b> ou <b>Menu</b> do controle reabre estas opções.</span>
+      <span class="version">v0.4.0</span>
     </footer>
   </main>
+
+  <p id="toast" class="toast" hidden></p>
 
   <div id="loader" class="loader" hidden>
     <div class="loader-box">

@@ -9,77 +9,119 @@
 <body>
   <main class="card">
     <header class="head">
-      <div class="logo">▶</div>
-      <div>
-        <h1>DS<span>View</span></h1>
-        <p class="sub">Cole o link (ou o código) da playlist para esta tela.</p>
+      <div class="brand-row">
+        <img class="logo" src="logo-mark.png" alt="DS View" />
+        <h1>DS <span>View</span></h1>
       </div>
+      <p class="sub">Configure sua playlist e inicie a exibição do conteúdo.</p>
     </header>
 
-    <label class="field">
-      <span>Link ou código da playlist</span>
-      <input id="url" type="text" inputmode="url" autocomplete="off" spellcheck="false"
-             placeholder="https://seusite.com.br/play/xxxx  ou  12345" />
-    </label>
-
-    <label class="field">
-      <span>Senha da playlist <em>(deixe em branco se não tiver)</em></span>
-      <input id="password" type="password" autocomplete="off" spellcheck="false" placeholder="Senha" />
-    </label>
-    <p id="err" class="err" hidden></p>
-
-    <div class="actions">
-      <button id="go" class="btn primary">Salvar e iniciar</button>
-      <button id="fav" class="btn ghost" title="Favoritar esta URL">★ Favoritar</button>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab-btn active" data-tab="basico" role="tab" aria-selected="true">Básico</button>
+      <button type="button" class="tab-btn" data-tab="favoritos" role="tab" aria-selected="false">Favoritos</button>
+      <button type="button" class="tab-btn" data-tab="config" role="tab" aria-selected="false">Configurações</button>
     </div>
 
-    <section class="favs" id="favs-wrap" hidden>
-      <h2>Favoritos</h2>
-      <ul id="favs"></ul>
+    <section class="tab-panel" data-panel="basico">
+      <div class="form-grid">
+        <label class="field iconed url-field">
+          <span>Link ou código da playlist</span>
+          <span class="input-wrap">
+            <span class="input-icon" aria-hidden="true">🔗</span>
+            <input id="url" type="text" inputmode="url" autocomplete="off" spellcheck="false"
+                   placeholder="https://seusite.com.br/play/xxxx  ou  12345" />
+          </span>
+        </label>
+
+        <label class="field iconed pass-field">
+          <span>Senha <em>(opcional)</em></span>
+          <span class="input-wrap">
+            <span class="input-icon" aria-hidden="true">🔒</span>
+            <input id="password" type="password" autocomplete="off" spellcheck="false" placeholder="•••••" />
+          </span>
+        </label>
+      </div>
+      <p id="err" class="err" hidden></p>
+
+      <div class="actions">
+        <button id="go" class="btn primary">▶ Salvar e iniciar</button>
+        <button id="fav" class="btn ghost" title="Favoritar esta URL">☆ Favoritar</button>
+      </div>
     </section>
 
-    <label class="toggle">
-      <input id="autostart" type="checkbox" />
-      <span>Abrir automaticamente quando o Windows ligar (kiosk desatendido)</span>
-    </label>
+    <section class="tab-panel" data-panel="favoritos" hidden>
+      <div class="favs">
+        <h2>Favoritos</h2>
+        <ul id="favs"></ul>
+        <p id="favs-empty" class="favs-empty" hidden>Nenhum favorito ainda. Favorite uma playlist na aba Básico pra ela aparecer aqui.</p>
+      </div>
+    </section>
 
-    <div id="autostart-aviso" class="aviso" hidden>
-      <p><b>Falta um passo para a tela voltar sozinha.</b> <span id="autostart-motivo"></span></p>
-      <p class="aviso-nota" id="autostart-como"></p>
-    </div>
-    <p id="autostart-ok" class="aviso-ok" hidden></p>
+    <section class="tab-panel" data-panel="config" hidden>
+      <div class="prefs-head">
+        <h2>Preferências do aparelho</h2>
+      </div>
 
-    <label class="toggle">
-      <input id="offline" type="checkbox" checked />
-      <span>Modo offline (baixa e toca do cache local). Desligado, consome só o servidor online.</span>
-    </label>
-
-    <div class="row" id="offline-opts">
-      <label class="field inline">
-        <span>Checar a playlist a cada</span>
-        <select id="interval">
-          <option value="5">5 minutos</option>
-          <option value="10">10 minutos</option>
-          <option value="15">15 minutos</option>
-          <option value="30">30 minutos</option>
-          <option value="60" selected>1 hora (padrão)</option>
-          <option value="120">2 horas</option>
-          <option value="360">6 horas</option>
-          <option value="720">12 horas</option>
-          <option value="1440">24 horas</option>
-        </select>
+      <label class="toggle iconed">
+        <input id="offline" type="checkbox" checked />
+        <span class="toggle-icon" aria-hidden="true">☁️</span>
+        <span class="toggle-text">
+          <b>Modo offline</b>
+          <small>Desligado, o conteúdo só é exibido online, sem cache.</small>
+        </span>
       </label>
-      <button id="clear" class="btn ghost" title="Apagar tudo que está salvo offline e baixar de novo">🗑 Limpar dados offline</button>
-    </div>
+
+      <div class="offline-extra" id="offline-opts">
+        <label class="field inline iconed">
+          <span>Checar a playlist a cada</span>
+          <span class="input-wrap">
+            <span class="input-icon" aria-hidden="true">⏱️</span>
+            <select id="interval">
+              <option value="5">5 minutos</option>
+              <option value="10">10 minutos</option>
+              <option value="15">15 minutos</option>
+              <option value="30">30 minutos</option>
+              <option value="60" selected>1 hora (padrão)</option>
+              <option value="120">2 horas</option>
+              <option value="360">6 horas</option>
+              <option value="720">12 horas</option>
+              <option value="1440">24 horas</option>
+            </select>
+          </span>
+        </label>
+        <span class="btn-wrap">
+          <span class="spacer" aria-hidden="true">&nbsp;</span>
+          <button id="clear" class="btn ghost" title="Apagar tudo que está salvo offline e baixar de novo">🗑 Limpar histórico e cache</button>
+        </span>
+      </div>
+
+      <label class="toggle iconed">
+        <input id="autostart" type="checkbox" />
+        <span class="toggle-icon" aria-hidden="true">🖥️</span>
+        <span class="toggle-text">
+          <b>Abrir automaticamente quando o Windows ligar</b>
+          <small>Inicia sozinho assim que o Windows liga.</small>
+        </span>
+      </label>
+
+      <div id="autostart-aviso" class="aviso" hidden>
+        <p><b>Falta um passo para a tela voltar sozinha.</b> <span id="autostart-motivo"></span></p>
+        <p class="aviso-nota" id="autostart-como"></p>
+      </div>
+      <p id="autostart-ok" class="aviso-ok" hidden></p>
+    </section>
 
     <div class="quit-row">
       <button id="quit" class="btn danger" title="Encerra o DS View (fecha o programa)">⏻ Encerrar o aplicativo</button>
     </div>
 
-    <footer class="foot">
-      Botão direito na tela do player reabre este menu. Sair do kiosk: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>.
+    <footer class="foot split">
+      <span>Botão direito reabre este menu. Sair do kiosk: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>.</span>
+      <span class="version">v0.3.0</span>
     </footer>
   </main>
+
+  <p id="toast" class="toast" hidden></p>
 
   <!-- Preloader (1º acesso / troca de playlist: baixa tudo antes de iniciar) -->
   <div id="loader" class="loader" hidden>

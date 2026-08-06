@@ -3,38 +3,78 @@
   --ink: #14286b; --muted: #7c756c; --line: #e8e3d8; --canvas: #fbfaf7;
 }
 * { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; }
+/* min-height, NUNCA height: com height:100% fixo, conteúdo mais alto que a janela ficava cortado
+   sem jeito de rolar até o topo/rodapé. */
+html, body { min-height: 100%; margin: 0; }
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--ink);
   background: radial-gradient(1200px 700px at 50% -10%, var(--tint), var(--canvas) 60%);
-  display: grid; place-items: center; padding: 24px; -webkit-user-select: none; user-select: none;
+  display: grid; place-items: center; padding: max(24px, 3vh) max(24px, 3vw);
+  -webkit-user-select: none; user-select: none; overflow-x: hidden;
 }
 .card {
-  width: 100%; max-width: 560px; background: #fff; border: 1px solid var(--line);
+  width: 100%; max-width: min(560px, 94vw); background: #fff; border: 1px solid var(--line);
   border-radius: 20px; padding: 30px 28px; box-shadow: 0 24px 60px -30px rgba(32,27,23,.4);
 }
-.head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
-.logo { width: 46px; height: 46px; border-radius: 12px; background: var(--brand); color: #fff;
-  display: grid; place-items: center; font-size: 22px; box-shadow: 0 8px 22px -8px var(--cta); }
+.head { text-align: center; margin-bottom: 22px; }
+.brand-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.logo { height: 46px; width: auto; flex: none; }
 h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
 h1 span { color: var(--brand); }
-.sub { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.sub { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+
+/* Senha é curta (a maioria é 4-5 dígitos) — não faz sentido dividir a linha meio a meio com a URL. */
+.form-grid { display: flex; flex-wrap: wrap; gap: 16px; }
+.url-field { flex: 3 1 220px; }
+.pass-field { flex: 1 1 110px; max-width: 160px; }
+
+/* Abas: só duas, então divide a régua meio a meio; o indicador é a borda inferior colorida. */
+.tabs { display: flex; margin: 18px 0 16px; border-bottom: 2px solid var(--line); }
+.tab-btn { flex: 1; text-align: center; background: transparent; border: 0; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; padding: 10px 6px; cursor: pointer; font: inherit; font-weight: 700; font-size: 14px; color: var(--muted); }
+.tab-btn.active { color: var(--brand); border-bottom-color: var(--brand); }
+.tab-panel[hidden] { display: none; }
+
+/* Sub-painel do toggle "Modo offline" acima — por isso indentado e sem borda própria, não é uma
+   seção nova, é detalhe de configuração de quem já está logo em cima. */
+.offline-extra { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px 16px;
+  margin: 10px 0 16px 28px; transition: opacity .15s; }
+.offline-extra .field.inline { flex: 1 1 180px; }
+/* Espaçador invisível do tamanho do rótulo "Checar a playlist a cada" — sem ele, align-items:flex-end
+   só alinha o FUNDO do botão com o fundo do select, e o topo do botão sobra mais baixo que o do campo
+   (o campo tem rótulo em cima, o botão sozinho não tinha nada pra igualar a altura toda). */
+.offline-extra .btn-wrap { display: block; }
+.offline-extra .btn-wrap .spacer { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; visibility: hidden; }
+
 .field { display: block; margin-bottom: 6px; }
 .field span { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
 .field span em { font-style: normal; font-weight: 400; opacity: .8; }
-#url, #password { width: 100%; font-size: 16px; padding: 14px 14px; border: 2px solid var(--line);
+
+.input-wrap { display: block; position: relative; }
+.input-icon { position: absolute; top: 50%; left: 14px; transform: translateY(-50%); font-size: 15px;
+  line-height: 1; opacity: .55; pointer-events: none; }
+.iconed input, .iconed select { padding-left: 40px !important; }
+
+/* Campo e botão do mesmo tamanho: mesma fonte, mesmo padding vertical, mesma borda de 2px em
+   TODOS (inclusive os botões, que antes tinham border:0 — a "borda invisível" é o que faz a
+   altura bater com input/select, que têm borda real). */
+#url, #password, #interval { width: 100%; font-size: 15px; padding: 13px 14px; border: 2px solid var(--line);
   border-radius: 12px; outline: none; transition: border-color .15s, box-shadow .15s; }
-#url:focus, #password:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--tint); }
+#url:focus, #password:focus, #interval:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--tint); }
+#interval { background: #fff; cursor: pointer; }
 .err { color: var(--cta); font-size: 13px; font-weight: 600; margin: 8px 0 0; }
-.actions { display: flex; gap: 10px; margin-top: 16px; }
-.btn { cursor: pointer; font: inherit; font-weight: 700; border: 0; border-radius: 12px; padding: 14px 18px; transition: background .15s, transform .05s; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.actions .btn.primary { flex: 2 1 200px; }
+.actions .btn.ghost { flex: 1 1 140px; }
+.btn { cursor: pointer; font-size: 15px; font-weight: 700; border: 2px solid transparent; border-radius: 12px;
+  padding: 13px 18px; transition: background .15s, transform .05s; white-space: nowrap; }
 .btn:active { transform: translateY(1px); }
 .btn.primary { background: var(--brand); color: #fff; flex: 1; }
 .btn.primary:hover { background: var(--cta); }
 .btn.ghost { background: transparent; color: var(--brand); border: 2px solid var(--line); }
 .btn.ghost:hover { background: var(--tint); }
-.favs { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 16px; }
+.favs-empty { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0; }
 .favs h2 { font-size: 14px; color: var(--muted); margin: 0 0 10px; text-transform: uppercase; letter-spacing: .04em; }
 #favs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 #favs li { display: flex; align-items: center; gap: 8px; background: var(--canvas); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
@@ -44,28 +84,50 @@ h1 span { color: var(--brand); }
 #favs button:hover { background: var(--tint); color: var(--cta); }
 .toggle { display: flex; align-items: center; gap: 10px; margin-top: 16px; font-size: 14px; color: var(--ink); cursor: pointer; }
 .toggle input { width: 18px; height: 18px; accent-color: var(--brand); flex: none; }
-.row { display: flex; align-items: flex-end; gap: 12px; margin-top: 14px; flex-wrap: wrap; transition: opacity .15s; }
-.field.inline { margin: 0; flex: 1; min-width: 180px; }
-#interval { width: 100%; font: inherit; font-size: 15px; padding: 12px 12px; border: 2px solid var(--line);
-  border-radius: 12px; background: #fff; outline: none; cursor: pointer; }
-#interval:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--tint); }
-.row .btn { padding: 12px 14px; font-size: 14px; }
+.toggle.iconed { align-items: flex-start; }
+.toggle.iconed input { margin-top: 2px; }
+.toggle-icon { font-size: 17px; line-height: 1; flex: none; margin-top: 1px; }
+.toggle-text { display: block; }
+.toggle-text b { display: block; font-weight: 600; font-size: 14px; }
+.toggle-text small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; font-weight: 400; }
+
+.field.inline { margin: 0; }
+
+.prefs-head { margin-bottom: 12px; }
+.prefs-head h2 { font-size: 14px; margin: 0; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+  background: var(--ink); color: #fff; font-size: 13px; font-weight: 600; padding: 10px 18px; border-radius: 999px;
+  box-shadow: 0 12px 30px -12px rgba(0,0,0,.5); opacity: 0; transition: opacity .2s; z-index: 20; max-width: 90vw; text-align: center; }
+.toast.show { opacity: 1; }
+.toast[hidden] { display: none; }
+
 .quit-row { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; justify-content: center; }
 .btn.danger { background: transparent; color: #b42318; border: 2px solid #f2c4bd; }
 .btn.danger:hover { background: #fdecea; }
 .btn.danger.armed { background: #b42318; color: #fff; border-color: #b42318; }
-.foot { margin-top: 16px; font-size: 12px; color: var(--muted); line-height: 1.5; text-align: center; }
+.foot { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12px;
+  color: var(--muted); line-height: 1.5; text-align: center; }
+/* Empilhado e centralizado por padrão — só vira uma linha só (texto + versão nas pontas) quando
+   sobra largura de verdade. */
+.foot.split { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+.foot .version { font-variant-numeric: tabular-nums; white-space: nowrap; opacity: .8; }
+
+@media (min-width: 640px) {
+  .foot.split { flex-direction: row; justify-content: space-between; text-align: left; }
+}
 kbd { background: var(--canvas); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-family: ui-monospace, monospace; font-size: 11px; }
 
-.loader { position: fixed; inset: 0; background: rgba(10,13,19,.92); display: grid; place-items: center; color: #fff; }
+/* Preloader claro, igual ao resto do app — nada de tela escura tomando conta da janela. */
+.loader { position: fixed; inset: 0; background: rgba(251,250,247,.97); display: grid; place-items: center; color: var(--ink); }
 .loader[hidden] { display: none; } /* a regra .loader{display:grid} vence o [hidden] do navegador — sem isto o preloader fica sempre visível */
 .loader-box { text-align: center; max-width: 360px; padding: 24px; }
-.loader-box h2 { margin: 18px 0 6px; font-size: 20px; }
-.loader-box p { margin: 0; color: rgba(255,255,255,.7); font-size: 14px; }
-.spinner { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,.2); border-top-color: var(--brand);
+.loader-box h2 { margin: 18px 0 6px; font-size: 20px; color: var(--ink); }
+.loader-box p { margin: 0; color: var(--muted); font-size: 14px; }
+.spinner { width: 44px; height: 44px; border: 4px solid var(--line); border-top-color: var(--brand);
   border-radius: 50%; margin: 0 auto; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.bar { margin-top: 20px; height: 8px; background: rgba(255,255,255,.15); border-radius: 999px; overflow: hidden; }
+.bar { margin-top: 20px; height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; }
 .bar-fill { height: 100%; width: 0; background: var(--brand); border-radius: 999px; transition: width .25s; }
 
 /* Aviso do auto-start: marcar o interruptor não garante que a TV volta sozinha (falta o login
@@ -74,3 +136,15 @@ kbd { background: var(--canvas); border: 1px solid var(--line); border-radius: 5
 .aviso p { margin: 0 0 6px; font-size: 13px; line-height: 1.5; }
 .aviso-nota { margin: 0 !important; font-size: 12px; color: var(--muted); }
 .aviso-ok { margin-top: 10px; font-size: 13px; font-weight: 600; color: #0d9488; }
+
+/* Mini PC ligado direto numa TV grande (1080p/4K): cartão um pouco maior e mais respiro,
+   mesmo sem overscan de TV analógica (HDMI não corta borda, mas a distância de leitura pede letra maior). */
+@media (min-width: 1400px) {
+  .card { max-width: min(680px, 90vw); padding: 38px 36px; }
+  h1 { font-size: 25px; }
+  .sub { font-size: 15px; }
+  #url, #password, #interval { font-size: 16px; padding: 15px 14px; }
+  .btn { font-size: 16px; padding: 15px 18px; }
+  .toggle { font-size: 15px; }
+  .toast { font-size: 14px; padding: 11px 20px; }
+}
