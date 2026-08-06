@@ -23,6 +23,12 @@ const state = require('./state');
 // TV/kiosk: libera autoplay COM som sem exigir gesto do usuário (respeitando o flag `audio` de cada item).
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
+// Rede de segurança do processo principal: numa TV desatendida, um erro não tratado em QUALQUER
+// lugar (um bug futuro, uma Promise sem .catch) mata o app inteiro sem aviso — melhor logar e
+// seguir vivo do que a tela apagar de vez sem ninguém saber por quê.
+process.on('uncaughtException', (err) => console.error('uncaughtException:', err));
+process.on('unhandledRejection', (err) => console.error('unhandledRejection:', err));
+
 let win = null;
 let port = 0;
 
@@ -69,11 +75,30 @@ function createWindow() {
   });
   win.once('ready-to-show', () => win.show());
 
+  // Sem isto, um crash do processo de renderização (driver de GPU tocando vídeo, memória em PC
+  // fraco) deixava a TV parada numa tela preta pra sempre — app "vivo" no Gerenciador de Tarefas,
+  // mas sem imagem nenhuma, e ninguém percebe até reclamarem. Recarrega o que já estava carregado.
+  win.webContents.on('render-process-gone', (_e, details) => {
+    if (details.reason === 'clean-exit') return;
+    reviveAfterCrash();
+  });
+  win.webContents.on('unresponsive', () => {
+    // Dá um tempo pra travamento passageiro (ex.: decode pesado) antes de forçar a recriação.
+    setTimeout(() => { if (win && !win.isDestroyed() && win.webContents.isWaitingForResponse()) reviveAfterCrash(); }, 15000);
+  });
+
   // Bloqueia navegação para fora e novas janelas (kiosk fechado).
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (e, url) => {
     const origin = config.read().origin; // no modo só-online carregamos a página real /play/{token}.
-    const allowRemote = origin && url.startsWith(origin);
+    // Comparar ORIGEM DE VERDADE (protocolo+host+porta), não prefixo de string: `url.startsWith(origin)`
+    // deixava passar `origin + ".attacker.com"` — um domínio parecido que literalmente começa com o
+    // texto do origin configurado — como se fosse o site real. Kiosk público, isso é phishing/pichação
+    // em tela cheia sem ninguém perceber.
+    let allowRemote = false;
+    if (origin) {
+      try { allowRemote = new URL(url).origin === new URL(origin).origin; } catch (e2) { allowRemote = false; }
+    }
     if (!url.startsWith('file:') && !url.startsWith('http://127.0.0.1:' + port) && !allowRemote) e.preventDefault();
   });
 
@@ -113,6 +138,23 @@ function loadPlayer() {
   win.loadFile(path.join(__dirname, '..', 'renderer', 'player.html'), {
     query: { port: String(port), token: cfg.token, device: cfg.device || '' }, // device p/ o player pular a senha.
   });
+}
+
+// Reagir a CADA crash na hora, sem limite, vira loop de recriar-carregar-crashar (driver de vídeo
+// que trava sempre naquele mesmo ponto) — consome CPU/memória sem parar em vez de recuperar uma
+// vez e ficar quieto. Backoff crescente: rápido no primeiro crash, cada vez mais devagar depois.
+let crashCount = 0;
+let crashResetTimer = null;
+function reviveAfterCrash() {
+  if (!win || win.isDestroyed()) return;
+  crashCount += 1;
+  clearTimeout(crashResetTimer);
+  crashResetTimer = setTimeout(() => { crashCount = 0; }, 10 * 60 * 1000); // 10 min sem crash = zera a contagem.
+  const delay = Math.min(crashCount * 5000, 60000); // 5s, 10s, 15s ... até 60s no máximo.
+  setTimeout(() => {
+    if (!win || win.isDestroyed()) return;
+    routeStartup();
+  }, delay);
 }
 
 /** "Recarregar" do menu: força uma consulta à API (pega mudança da playlist) e só então recarrega. */
@@ -181,9 +223,13 @@ function wireIpc() {
   ipcMain.handle('autostart:set', (_e, on) => {
     on = !!on;
     app.setLoginItemSettings({ openAtLogin: on, path: process.execPath });
-    config.write({ autostart: on });
     // Lê de volta: se o Windows recusou (política, antivírus), a tela não pode mentir dizendo "ok".
-    return !!app.getLoginItemSettings().openAtLogin;
+    const registrado = !!app.getLoginItemSettings().openAtLogin;
+    // Desligar (ou o Windows recusar ligar) é pra valer: arma a mesma supressão do "Sair" — nem algo
+    // de fora relançando (agendador, acesso atribuído) reabre antes do próximo boot de verdade.
+    // Registrar com sucesso limpa a supressão.
+    config.write({ autostart: on, quitUntilBoot: registrado ? null : bootId() });
+    return registrado;
   });
 
   /** Estado real do auto-start + se o Windows entra na conta sozinho ao ligar. */
@@ -250,7 +296,17 @@ if (!gotLock) {
     // Repassa o progresso do sync para a tela (preloader).
     sync.start((status) => { if (win && !win.isDestroyed()) win.webContents.send('sync:status', status); });
 
-    port = await server.start();
+    // O servidor local pode falhar ao subir (antivírus/firewall bloqueando o loopback, porta
+    // negada por política do Windows) — sem isto a Promise rejeitada derrubava o app inteiro antes
+    // da janela abrir. Tenta mais duas vezes (mesma ideia do retry do app Android) e, se mesmo
+    // assim não conseguir, segue sem servidor local: modo só-online continua funcionando.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try { port = await server.start(); break; }
+      catch (err) {
+        if (attempt === 3) { console.error('Servidor local não subiu depois de 3 tentativas:', err); port = 0; }
+        else await new Promise((r) => setTimeout(r, 500));
+      }
+    }
 
     // Aplica a preferência de auto-start salva (idempotente).
     const cfg = config.read();

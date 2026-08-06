@@ -48,9 +48,13 @@ function sendJson(res, obj) {
   res.end(body);
 }
 
+// Basename controlado (sha1 + extensão curta) — barra path traversal (`../`, `/`, caminho absoluto)
+// por construção: nada que não bata com este formato exato passa. Exportado pro teste unitário
+// não precisar reimplementar o regex (e divergir dele com o tempo).
+const MEDIA_NAME_RE = /^[a-f0-9]{40}\.[a-z0-9]{1,5}$/;
+
 function serveMedia(req, res, name) {
-  // name é um basename controlado (hash + ext); barra path traversal por segurança.
-  if (!/^[a-f0-9]{40}\.[a-z0-9]{1,5}$/.test(name)) { res.writeHead(400); return res.end(); }
+  if (!MEDIA_NAME_RE.test(name)) { res.writeHead(400); return res.end(); }
   const file = path.join(cache.dir(), name);
   let stat;
   try { stat = fs.statSync(file); } catch (e) { res.writeHead(404); return res.end(); }
@@ -71,11 +75,21 @@ function serveMedia(req, res, name) {
       'Content-Length': end - start + 1,
       'Cache-Control': 'no-store',
     });
-    fs.createReadStream(file, { start, end }).pipe(res);
+    pipeAndClean(fs.createReadStream(file, { start, end }), res);
   } else {
     res.writeHead(200, { 'Content-Type': type, 'Content-Length': stat.size, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' });
-    fs.createReadStream(file).pipe(res);
+    pipeAndClean(fs.createReadStream(file), res);
   }
+}
+
+// .pipe() sozinho não fecha a origem se o destino (res) morre antes do 'end' — TV fazendo
+// seek/scrub o dia todo gera um Range request abortado atrás do outro; sem isto cada um deixa
+// um file handle aberto (vaza descriptor até o processo travar depois de dias no ar).
+function pipeAndClean(readStream, res) {
+  const cleanup = () => readStream.destroy();
+  res.on('close', cleanup);
+  readStream.on('error', cleanup);
+  readStream.pipe(res);
 }
 
 async function proxyAuth(req, res) {
@@ -113,23 +127,34 @@ async function proxyAuth(req, res) {
 }
 
 function handler(req, res) {
-  if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); } // preflight do fetch.
-  const url = req.url.split('?')[0];
-  if (req.method === 'GET' && url === '/state') {
-    const lg = state.get();
-    return sendJson(res, lg ? { status: 'ok', payload: rewrite(lg) } : { status: 'offline' });
+  // Um handler HTTP do Node não tem try/catch implícito: uma exceção síncrona aqui dentro
+  // (ex.: decodeURIComponent com % inválido) sobe até derrubar o processo INTEIRO do Electron,
+  // não só essa requisição — e este servidor está em 127.0.0.1, alcançável por qualquer processo
+  // local (sessão de suporte remoto, outro software na máquina), não só o player.
+  try {
+    if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); } // preflight do fetch.
+    const url = req.url.split('?')[0];
+    if (req.method === 'GET' && url === '/state') {
+      const lg = state.get();
+      return sendJson(res, lg ? { status: 'ok', payload: rewrite(lg) } : { status: 'offline' });
+    }
+    if (req.method === 'POST' && url === '/state/auth') return proxyAuth(req, res);
+    if (req.method === 'GET' && url.startsWith('/media/')) return serveMedia(req, res, decodeURIComponent(url.slice('/media/'.length)));
+    res.writeHead(404); res.end();
+  } catch (e) {
+    try { res.writeHead(400); res.end(); } catch (e2) { /* resposta já em andamento, nada a fazer */ }
   }
-  if (req.method === 'POST' && url === '/state/auth') return proxyAuth(req, res);
-  if (req.method === 'GET' && url.startsWith('/media/')) return serveMedia(req, res, decodeURIComponent(url.slice('/media/'.length)));
-  res.writeHead(404); res.end();
 }
 
-/** Sobe o servidor em 127.0.0.1:porta-aleatória. Resolve com a porta. */
+/** Sobe o servidor em 127.0.0.1:porta-aleatória. Resolve com a porta, rejeita se não conseguir subir
+ *  (ex.: antivírus/firewall bloqueando o loopback) — sem isto o 'error' do socket ficava sem
+ *  listener, o que o Node trata como exceção não capturada e derruba o app antes da janela abrir. */
 function start() {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const srv = http.createServer(handler);
+    srv.on('error', reject);
     srv.listen(0, '127.0.0.1', () => { port = srv.address().port; resolve(port); });
   });
 }
 
-module.exports = { start, getPort: () => port, rewrite };
+module.exports = { start, getPort: () => port, rewrite, MEDIA_NAME_RE };

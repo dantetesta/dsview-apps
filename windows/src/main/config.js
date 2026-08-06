@@ -52,7 +52,12 @@ function write(patch) {
   const next = Object.assign(read(), patch || {});
   try {
     fs.mkdirSync(path.dirname(FILE), { recursive: true });
-    fs.writeFileSync(FILE, JSON.stringify(next, null, 2));
+    // Escreve num arquivo temporário e troca de nome (rename é atômico no mesmo volume) — grava
+    // direto no arquivo final deixava uma janela onde uma queda de energia no meio do write (TV
+    // sem nobreak, é o cenário normal) corrompe o JSON e apaga origin/token/device/favoritos.
+    const tmp = FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(next, null, 2));
+    fs.renameSync(tmp, FILE);
   } catch (e) {
     /* melhor tolerar falha de disco do que crashar o kiosk */
   }

@@ -11,7 +11,8 @@
     "copy-player": "node scripts/copy-player.js",
     "start": "npm run copy-player && electron .",
     "dist": "npm run copy-player && electron-builder --win --x64",
-    "dist:dir": "npm run copy-player && electron-builder --win --x64 --dir"
+    "dist:dir": "npm run copy-player && electron-builder --win --x64 --dir",
+    "test": "node --test"
   },
   "devDependencies": {
     "electron": "^31.7.0",

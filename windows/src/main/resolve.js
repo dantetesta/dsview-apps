@@ -18,21 +18,26 @@ function parsePlayUrl(u) {
   return null;
 }
 
-/** Faz um GET seguindo redirect e devolve a URL final (para resolver código curto → /play/{token}). */
+/** Faz um GET seguindo redirect e devolve a URL final (para resolver código curto → /play/{token}).
+ *
+ * PRECISA ser `redirect: 'manual'`. Com `redirect: 'follow'` o net do Electron segue os redirects
+ * sozinho, silenciosamente — o evento 'redirect' não chega a disparar como esperado, então nada
+ * aqui nunca sabia pra onde o 302 tinha ido. O 'response' final não é mais um redirect, então não
+ * tem header `location` nenhum, e o código caía sempre no fallback `u` — a URL do CÓDIGO CURTO
+ * original, que nunca bate com `/play/{token}`. Resultado: resolver código curto sempre falhava. */
 function finalUrl(u) {
   return new Promise((resolve, reject) => {
-    const req = net.request({ method: 'GET', url: u, redirect: 'follow' });
+    const req = net.request({ method: 'GET', url: u, redirect: 'manual' });
+    let lastUrl = u;
     let done = false;
     req.on('redirect', (status, method, redirectUrl) => {
-      // net com redirect:'follow' já segue; capturamos o destino como fallback.
-      req._lastRedirect = redirectUrl;
+      lastUrl = redirectUrl;
       req.followRedirect();
     });
     req.on('response', (res) => {
-      const finalU = (res.headers && res.headers.location) || req._lastRedirect || u;
       // Consome o corpo para liberar o socket.
       res.on('data', () => {});
-      res.on('end', () => { if (!done) { done = true; resolve(String(finalU)); } });
+      res.on('end', () => { if (!done) { done = true; resolve(lastUrl); } });
     });
     req.on('error', (e) => { if (!done) { done = true; reject(e); } });
     req.end();
