@@ -3,6 +3,15 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Assinatura de release: senha vem de arquivo local gitignorado (keystore/.storepass), nunca do
+// próprio build.gradle.kts — este arquivo é público. Sem o keystore (ex.: CI de fork), a release
+// sai sem signingConfig — o gradle avisa e o APK não instala por cima de uma versão assinada.
+val ksDir = file("$rootDir/keystore")
+val ksFile = file("$ksDir/dsview-release.jks")
+val ksPassFile = file("$ksDir/.storepass")
+val hasSigning = ksFile.exists() && ksPassFile.exists()
+val ksPass = if (hasSigning) ksPassFile.readText().trim() else ""
+
 android {
     namespace = "com.dsview.player"
     compileSdk = 35
@@ -11,14 +20,26 @@ android {
         applicationId = "com.dsview.player"
         minSdk = 21          // Android 5.0 — cobre TV boxes e Android TV antigos.
         targetSdk = 34
-        versionCode = 5
-        versionName = "0.4.0"
+        versionCode = 6
+        versionName = "0.5.0"
+    }
+
+    signingConfigs {
+        if (hasSigning) {
+            create("release") {
+                storeFile = ksFile
+                storePassword = ksPass
+                keyAlias = "dsview"
+                keyPassword = ksPass
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasSigning) signingConfig = signingConfigs.getByName("release")
         }
     }
 
