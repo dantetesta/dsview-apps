@@ -2,6 +2,9 @@
 
 ![DS View — Android e Windows, o mesmo protocolo aberto para sinalização digital](cover.png)
 
+Código aberto, licença [MIT](LICENSE). Gostou do projeto? **Pix / PayPal:** `dante.testa@gmail.com` — sem
+pressão, é só um "obrigado" opcional.
+
 **DS View** é um player de sinalização digital para TV/totem: abre uma playlist em tela cheia, baixa o
 conteúdo para o aparelho e continua tocando mesmo sem internet. Código aberto, para qualquer backend que
 implemente o contrato de API descrito abaixo — não é preso a nenhum produto específico.
@@ -30,7 +33,11 @@ primeiro download.
 
 ### Baixar pronto
 
-Os instaladores ficam em [Releases](../../releases/latest). Não é preciso compilar nada para usar.
+Não é preciso compilar nada para usar — os links abaixo sempre apontam para a última versão publicada:
+
+**[⬇ Baixar para Android](../../releases/latest/download/dsview-android.apk)** ·
+**[⬇ Baixar para Windows](../../releases/latest/download/dsview-windows-setup.exe)** ·
+[ver todas as versões](../../releases)
 
 ### Compilar
 
@@ -237,5 +244,12 @@ de comportamento normalmente precisa ser replicada nos dois.
 
 ## Licença
 
-Este repositório ainda não tem um arquivo `LICENSE`. Antes de reutilizar o código, confirme com o
-mantenedor os termos de uso.
+[MIT](LICENSE) — use, modifique, redistribua, incorpore no seu próprio produto, sem pedir permissão.
+A única exigência é manter o aviso de copyright (autor + link) nas cópias.
+
+## Apoie o projeto
+
+Se o DS View te ajudou, um apoio é bem-vindo (e opcional — o projeto continua livre de qualquer forma):
+
+- **Pix:** `dante.testa@gmail.com`
+- **PayPal:** `dante.testa@gmail.com`
