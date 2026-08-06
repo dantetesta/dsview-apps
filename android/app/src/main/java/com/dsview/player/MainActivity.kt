@@ -33,6 +33,16 @@ import java.net.URLEncoder
  * morte do processo de renderização são TRATADAS. Qualquer uma delas falhando mostra uma tela preta
  * com o motivo escrito, nunca uma tela preta muda.
  */
+// Ruído genérico do WebView/embeds (YouTube, Vimeo) que aparece em QUALQUER site, não é bug nosso —
+// filtrado antes de entrar no anel de 40 linhas do Diagnóstico, pra sobrar espaço pro erro de verdade
+// quando o cliente mandar print de um problema real.
+private val CONSOLE_NOISE = listOf(
+    "is not recognized and ignored", // ex.: meta viewport-fit
+    "Unrecognized feature:", // Permissions-Policy do iframe (accelerometer, autoplay, gyroscope...)
+    "Unrecognized Content-Security-Policy directive",
+    "Failed to execute 'postMessage' on 'DOMWindow'", // quirk conhecido do widgetapi.js do YouTube
+)
+
 class MainActivity : AppCompatActivity() {
 
     private var web: WebView? = null
@@ -100,7 +110,10 @@ class MainActivity : AppCompatActivity() {
 
         w.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(m: ConsoleMessage): Boolean {
-                app.logJs("${m.messageLevel()} ${m.message()} (${m.sourceId()}:${m.lineNumber()})")
+                val msg = m.message()
+                if (CONSOLE_NOISE.none { msg.contains(it) }) {
+                    app.logJs("${m.messageLevel()} ${msg} (${m.sourceId()}:${m.lineNumber()})")
+                }
                 return true
             }
         }
