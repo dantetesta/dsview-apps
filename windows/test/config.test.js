@@ -95,3 +95,43 @@ test('normalizeDomain: tira caminho e barra final', () => {
 test('normalizeDomain: string inválida devolve vazio', () => {
   assert.equal(config.normalizeDomain('não é um domínio'), '');
 });
+
+// Bug real: "Sair" (ou recusar o auto-start) deixava o app impossível de reabrir manualmente até
+// reiniciar o Windows inteiro — porque a supressão de auto-relançador não tinha prazo. Estes testes
+// travam o comportamento correto: suprime só a rajada instantânea, nunca uma reabertura manual.
+test('shouldSuppressStartup: logo após o fechamento, no mesmo boot, suprime', () => {
+  const bootId = 555;
+  config.suppressAutoRelaunch(bootId); // grava quitAt = Date.now() de verdade.
+  assert.equal(config.shouldSuppressStartup(bootId, Date.now() + 1000), true); // "1s depois".
+});
+
+test('shouldSuppressStartup: passada a janela, NÃO suprime mesmo no mesmo boot (bug real corrigido)', () => {
+  const bootId = 556;
+  config.suppressAutoRelaunch(bootId);
+  const muitoDepois = Date.now() + config.AUTO_RELAUNCH_SUPPRESS_MS + 1000;
+  assert.equal(config.shouldSuppressStartup(bootId, muitoDepois), false);
+});
+
+test('shouldSuppressStartup: boot diferente nunca suprime', () => {
+  config.suppressAutoRelaunch(777);
+  assert.equal(config.shouldSuppressStartup(778, Date.now()), false);
+});
+
+test('shouldSuppressStartup: nunca fechou de propósito (quitUntilBoot null) não suprime', () => {
+  config.write({ quitUntilBoot: null, quitAt: null });
+  assert.equal(config.shouldSuppressStartup(999, Date.now()), false);
+});
+
+test('shouldSuppressStartup: config legado sem quitAt (versão anterior a este fix) não suprime', () => {
+  config.write({ quitUntilBoot: 42, quitAt: null });
+  assert.equal(config.shouldSuppressStartup(42, Date.now()), false);
+});
+
+test('suppressAutoRelaunch: grava boot-id e timestamp juntos', () => {
+  const before = Date.now();
+  config.suppressAutoRelaunch(321);
+  const read = config.read();
+  assert.equal(read.quitUntilBoot, 321);
+  assert.equal(typeof read.quitAt, 'number');
+  assert.ok(read.quitAt >= before);
+});

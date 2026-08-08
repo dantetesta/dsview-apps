@@ -39,9 +39,11 @@ binário agora. Ícone/logo em uso vêm da marca DS View oficial (`src/renderer/
 - **Limpar dados offline:** botão no setup que apaga toda a mídia + a "última versão boa" e rebaixa do zero.
 - **Preloader** no 1º acesso / troca de playlist (só no modo offline; baixa tudo antes de iniciar, com barra de progresso).
 - **Auto-start no boot** do Windows (opção): liga → ao ligar o PC o app abre sozinho em fullscreen e inicia a playlist.
-  **Só abre sozinho no boot de verdade:** se o usuário fechar de propósito (menu "Sair", Ctrl+Shift+Q, ou "Encerrar" no
-  setup), o app marca o boot atual (`bootId()` = `Date.now()/1000 - os.uptime()`, `config.quitUntilBoot`) e não reabre
-  sozinho pelo resto da sessão — nem se algo de fora tentar relançar. Só reiniciar o Windows libera de novo.
+  **Fechar de propósito (menu "Sair", Ctrl+Shift+Q, "Encerrar" no setup, ou recusar/desligar o auto-start) suprime só
+  um auto-relançador externo tentando religar NA HORA** (`config.suppressAutoRelaunch`/`shouldSuppressStartup`,
+  janela de `config.AUTO_RELAUNCH_SUPPRESS_MS` = 8s). **Reabertura manual do usuário sempre funciona**, mesmo minutos
+  depois no mesmo boot — bug real corrigido em 0.4.2 (a versão anterior suprimia até reiniciar o Windows, então
+  "Sair" e depois tentar abrir de novo na mão deixava o app "morto" até reboot).
 - **Anti-sleep** (tela não apaga). **Single-instance**.
 
 ## Arquitetura (cache-proxy + webview)
@@ -127,7 +129,11 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
     linha (sem espaço nas pontas) que começa com `/*` ou `*` vira `""`, inclusive diretivas de lint no meio do arquivo
     (`/* global YT */` etc.). Inofensivo hoje, mas se o plugin ganhar um comentário mid-file que importe, ele some
     silenciosamente na cópia branca.
-12. **O slug `ds-facil` (a origem) continua vazando, e não tem como evitar.** `config.js` monta a URL real como
+12. **`loadPlayer()` reafirma kiosk+fullscreen toda vez que carrega** (`win.setKiosk(true)`/`setFullScreen(true)`).
+    Sem isso, sair pras configurações (que tira kiosk) e depois "Salvar e iniciar" (IPC `app:play` → `loadPlayer()`)
+    deixava a janela numa decoração/tamanho errado — bug real corrigido em 0.4.2. Qualquer novo caminho que leve
+    de volta ao player tem que passar por `loadPlayer()`, não recriar a lógica de carregamento à parte.
+13. **O slug `ds-facil` (a origem) continua vazando, e não tem como evitar.** `config.js` monta a URL real como
     `origin + '/wp-json/ds-facil/v1/player/' + token` — é a rota REST fixa do plugin, então o literal `ds-facil`
     fica no `app.asar` do instalador público (confirmado via `strings` no `.asar` empacotado). Não é uma falha do
     stripping — é a única forma de string de marca que o white-label não consegue esconder, porque é o contrato

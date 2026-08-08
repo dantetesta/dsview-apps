@@ -3,7 +3,9 @@
  * Casca kiosk fullscreen + servidor local (cache offline) + loop de sync. Sem barra de URL:
  * botão direito, ESC ou o "x" discreto do canto abrem o menu/as configurações (Configurações /
  * Recarregar / Sair). Auto-start no boot opcional — mas só entra sozinho no boot: se o usuário
- * fechar de propósito, fica fechado até o Windows reiniciar de novo (ver `quitForGood()`).
+ * fechar de propósito, um auto-relançador externo (agendador, acesso atribuído) não traz de volta
+ * na hora (ver `quitForGood()`). Isso NÃO impede o usuário de reabrir manualmente depois — só
+ * suprime a rajada instantânea (janela curta, `config.AUTO_RELAUNCH_SUPPRESS_MS`).
  */
 'use strict';
 const path = require('path');
@@ -41,10 +43,13 @@ function bootId() {
 }
 
 /** Fecho pedido pelo usuário (menu, atalho, botão "Encerrar" do setup): marca o boot atual como
- * "fechado de propósito" antes de sair. Enquanto for o mesmo boot, o app não volta sozinho — nem
- * se algo de fora (agendador, acesso atribuído) tentar reabrir. Só um novo boot libera de novo. */
+ * "fechado de propósito" antes de sair, com o instante do fechamento. Por uma janela curta (ver
+ * config.AUTO_RELAUNCH_SUPPRESS_MS), algo de fora (agendador, acesso atribuído) tentando reabrir na
+ * hora é recusado — passada essa janela, até um lançamento automático é tratado normal, e uma
+ * reabertura manual do usuário NUNCA é bloqueada por isto (bug real: já aconteceu de "Sair" deixar o
+ * app impossível de reabrir manualmente até reiniciar o Windows). */
 function quitForGood() {
-  config.write({ quitUntilBoot: bootId() });
+  config.suppressAutoRelaunch(bootId());
   app.quit();
 }
 
@@ -129,6 +134,13 @@ function loadSetup() {
 }
 
 function loadPlayer() {
+  // Volta ao kiosk sempre que o player carrega — sem isto, sair pras configurações (que tira kiosk/
+  // fullscreen) e depois clicar "Salvar e iniciar" (app:play) deixava a janela numa decoração/tamanho
+  // errado, meio kiosk meio janela normal ("bugado"), obrigando o usuário a fechar e reabrir na mão.
+  if (win && !win.isDestroyed()) {
+    win.setFullScreen(true);
+    win.setKiosk(true);
+  }
   const cfg = config.read();
   if (cfg.offline === false) {
     // Modo só-online: carrega a página real do player (sem cache, sem servidor local; senha nativa lá).
@@ -238,7 +250,9 @@ function wireIpc() {
     // Desligar (ou o Windows recusar ligar) é pra valer: arma a mesma supressão do "Sair" — nem algo
     // de fora relançando (agendador, acesso atribuído) reabre antes do próximo boot de verdade.
     // Registrar com sucesso limpa a supressão.
-    config.write({ autostart: on, quitUntilBoot: registrado ? null : bootId() });
+    config.write({ autostart: on });
+    if (registrado) config.write({ quitUntilBoot: null, quitAt: null });
+    else config.suppressAutoRelaunch(bootId());
     return registrado;
   });
 
@@ -295,10 +309,12 @@ if (!gotLock) {
   app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 
   app.whenReady().then(async () => {
-    // Usuário fechou de propósito neste mesmo boot (menu/atalho/botão "Encerrar")? Respeita e não
-    // reabre sozinho — mesmo se algo de fora (agendador, acesso atribuído) tentar relançar. Só
-    // reinicia o Windows pra liberar de novo. Sai antes de tocar em servidor/sync/janela.
-    if (config.read().quitUntilBoot === bootId()) { app.quit(); return; }
+    // Usuário fechou de propósito (menu/atalho/"Encerrar"/recusou auto-start) HÁ POUCO TEMPO neste
+    // boot? Suprime — é a janela em que um auto-relançador externo (agendador, acesso atribuído)
+    // tentaria religar na hora, contra a vontade de quem acabou de fechar. Passada essa janela curta,
+    // qualquer lançamento novo (inclusive o usuário reabrindo manualmente) é tratado normal — Windows
+    // não expõe um jeito confiável de saber SE este lançamento veio do Run-key (ver config.js).
+    if (config.shouldSuppressStartup(bootId())) { app.quit(); return; }
 
     powerSaveBlocker.start('prevent-display-sleep'); // TV não apaga.
     wireIpc();
