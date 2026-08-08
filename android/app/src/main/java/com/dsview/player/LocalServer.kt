@@ -206,13 +206,21 @@ class LocalServer(
                 syncer.restart()
                 json(JSONObject().put("interval", config.syncInterval))
             }
-            // Desligar é pra valer: além do flag, arma a supressão do boot atual (mesma de "Sair"),
-            // então nem o Android reinvocando o app por ele ser a tela inicial do aparelho reabre
-            // antes do próximo boot de verdade. Ligar de novo limpa a supressão.
+            // Desligar é pra valer: além do flag, solta a preferência de tela inicial (senão o
+            // Android continua tratando este app como HOME e ele volta sozinho mesmo com o
+            // interruptor desligado) e arma a supressão CURTA do boot atual (mesma de "Sair" —
+            // ver Config.AUTO_RELAUNCH_SUPPRESS_MS), só pra segurar o instante da troca. Ligar de
+            // novo limpa a supressão.
             "autostart" -> {
                 val on = body.optBoolean("on", false)
                 config.autostart = on
-                config.quitUntilBoot = if (on) 0L else Config.bootId()
+                if (on) {
+                    config.quitUntilBoot = 0L
+                    config.quitAt = 0L
+                } else {
+                    config.suppressAutoRelaunch()
+                    try { context.packageManager.clearPackagePreferredActivities(context.packageName) } catch (e: Throwable) {}
+                }
                 json(JSONObject().put("autostart", config.autostart))
             }
             // Estado real do auto-start: ligar o interruptor não basta no Android 10+.

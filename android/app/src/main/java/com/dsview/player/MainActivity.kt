@@ -3,6 +3,7 @@ package com.dsview.player
 import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -26,8 +27,11 @@ import java.net.URLEncoder
 /**
  * Casca kiosk fullscreen em volta do player. Sem barra de URL. BACK/MENU abre o menu
  * (Configurações / Recarregar / Diagnóstico / Sair) — equivalente ao botão direito do app Windows.
- * Auto-start no boot é opcional, mas só entra sozinho no boot de verdade: se o usuário fechar de
- * propósito pelo "Sair", fica fechado até o aparelho reiniciar de novo (ver `Config.quitUntilBoot`).
+ * "Sair" solta a preferência de tela inicial (HOME) e entrega o controle a outro launcher do
+ * aparelho, se houver — só `finish()` não bastava porque o Android exige uma HOME residente e
+ * relançava este mesmo Activity na hora (bug real: cliente ficava preso num loop, nunca saía).
+ * Uma janela curta pós-fechamento (`Config.shouldSuppressStartup`) segura essa reabertura
+ * automática sem travar reaberturas manuais depois dela — ver `exitKiosk()`.
  *
  * Compatibilidade (TV box Android 10 e afins): a criação do WebView, a porta do servidor local e a
  * morte do processo de renderização são TRATADAS. Qualquer uma delas falhando mostra uma tela preta
@@ -52,10 +56,10 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Usuário fechou de propósito neste mesmo boot (menu "Sair")? Respeita e não reabre
-        // sozinho — nem se o Android reinvocar o app por ser a tela inicial do aparelho (HOME).
-        // Só um boot novo (reiniciar de verdade) libera de novo. Sai antes de montar qualquer UI.
-        if (app.config.quitUntilBoot == Config.bootId()) { finish(); return }
+        // Usuário fechou de propósito (menu "Sair") HÁ POUCO TEMPO neste boot? Suprime — é a janela
+        // em que o Android tentaria religar na hora por este app ser a tela inicial (HOME). Passada
+        // essa janela curta, qualquer lançamento novo é tratado normal (ver Config.shouldSuppressStartup).
+        if (app.config.shouldSuppressStartup()) { finish(); return }
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) // TV não apaga.
 
@@ -261,10 +265,40 @@ class MainActivity : AppCompatActivity() {
                         runOnUiThread { web?.reload() ?: route() }
                     }.start()
                     2 -> showDiagnostics()
-                    3 -> { app.config.quitUntilBoot = Config.bootId(); finish() }
+                    3 -> exitKiosk()
                 }
             }
             .show()
+    }
+
+    /**
+     * "Sair" de verdade. Cliente relatou: apertar Sair não encerrava nada — o app é registrado como
+     * tela inicial (HOME) do aparelho (é assim que o auto-start "à prova de bala" funciona), e o
+     * Android EXIGE uma HOME residente o tempo todo. Só chamar `finish()` fazia o sistema relançar
+     * este mesmo Activity na hora — loop infinito, nunca saía, TV box preso na playlist pra sempre.
+     *
+     * Fix: solta a preferência de HOME (`clearPackagePreferredActivities` — API pública, qualquer
+     * app pode limpar a PRÓPRIA preferência, sem permissão especial) e entrega o controle pra outro
+     * launcher instalado no aparelho, se houver um (o launcher de fábrica do TV box, por exemplo).
+     * Sem outro launcher instalado, não tem pra onde mandar — nesse caso ainda assim soltamos a
+     * preferência (então um próximo boot não força mais este app) e só resta `finish()`.
+     */
+    private fun exitKiosk() {
+        app.config.suppressAutoRelaunch()
+        try { packageManager.clearPackagePreferredActivities(packageName) } catch (e: Throwable) {}
+
+        val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        val candidates = try { packageManager.queryIntentActivities(homeIntent, 0) } catch (e: Throwable) { emptyList() }
+        val other = candidates.firstOrNull { it.activityInfo.packageName != packageName }
+        if (other != null) {
+            try {
+                val launch = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+                    .setClassName(other.activityInfo.packageName, other.activityInfo.name)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(launch)
+            } catch (e: Throwable) {}
+        }
+        finish()
     }
 
     private fun showDiagnostics() {

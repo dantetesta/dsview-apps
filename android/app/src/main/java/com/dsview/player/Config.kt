@@ -53,13 +53,32 @@ class Config(context: Context) {
         set(v) { prefs.edit().putString("lastUrl", v).apply() }
 
     /**
-     * Boot-id (ver `bootId()`) em que o usuário fechou o app de propósito (menu "Sair"). Enquanto
-     * for o boot atual, `MainActivity` recusa abrir sozinho — nem se o app for a tela inicial do
-     * aparelho e o Android tentar reabrir por ser HOME. Só um boot novo libera de novo.
+     * Boot-id (ver `bootId()`) em que o usuário fechou o app de propósito (menu "Sair") ou desligou
+     * o auto-start. Só suprime reabertura automática por uma janela CURTA (ver `shouldSuppressStartup`)
+     * — o suficiente pra segurar o Android tentando religar na hora por este app ser HOME, sem travar
+     * pra sempre até reiniciar o aparelho (bug real: cliente relatou "Sair" entrando em loop infinito
+     * e não tinha jeito de voltar ao launcher normal do TV box sem desligar na força).
      */
     var quitUntilBoot: Long
         get() = prefs.getLong("quitUntilBoot", 0L)
         set(v) { prefs.edit().putLong("quitUntilBoot", v).apply() }
+
+    /** Timestamp (ms) do fechamento acima — junto com `quitUntilBoot`, define a janela de supressão. */
+    var quitAt: Long
+        get() = prefs.getLong("quitAt", 0L)
+        set(v) { prefs.edit().putLong("quitAt", v).apply() }
+
+    /** Marca fechamento de propósito nesse boot, com o instante — ver `shouldSuppressStartup`. */
+    fun suppressAutoRelaunch() {
+        quitUntilBoot = bootId()
+        quitAt = System.currentTimeMillis()
+    }
+
+    /** Este lançamento deveria ser recusado (Android religando na hora por este app ser HOME)? Só
+     * suprime dentro da janela curta pós-fechamento — depois disso, qualquer lançamento (inclusive
+     * o usuário abrindo de novo por outro launcher) é tratado normal. */
+    fun shouldSuppressStartup(): Boolean =
+        shouldSuppress(quitUntilBoot, quitAt, bootId(), System.currentTimeMillis())
 
     /** Minutos entre consultas à playlist (5..1440). */
     var syncInterval: Int
@@ -107,6 +126,11 @@ class Config(context: Context) {
         const val SYNC_MAX = 1440
         const val SYNC_DEFAULT = 60
 
+        /** Janela de supressão pós-"Sair"/autostart-off — mesmo valor e mesmo raciocínio do app
+         * Windows (`AUTO_RELAUNCH_SUPPRESS_MS`): curta o bastante pra não incomodar quem reabre de
+         * propósito, longa o bastante pra segurar o Android religando o HOME na hora. */
+        const val AUTO_RELAUNCH_SUPPRESS_MS = 8000L
+
         /**
          * Fingerprint estável do boot atual (epoch-ms de quando o aparelho ligou). `elapsedRealtime()`
          * anda junto com `currentTimeMillis()`, então a subtração dá sempre o mesmo instante, boot
@@ -116,6 +140,15 @@ class Config(context: Context) {
 
         /** Clampa o intervalo de sync em SYNC_MIN..SYNC_MAX. Pura — testável sem Context. */
         fun clampInterval(v: Int): Int = v.coerceIn(SYNC_MIN, SYNC_MAX)
+
+        /** Lógica pura por trás de `shouldSuppressStartup()` — testável sem Context/SharedPreferences.
+         * Bug real corrigido aqui: antes suprimia pra sempre até reiniciar o aparelho (comparação de
+         * igualdade simples, sem prazo); agora só dentro da janela curta pós-fechamento. */
+        fun shouldSuppress(quitUntilBoot: Long, quitAt: Long, currentBootId: Long, now: Long): Boolean {
+            if (quitUntilBoot != currentBootId) return false
+            if (quitAt == 0L) return false // config antiga sem timestamp: não trava — abrir é o modo seguro.
+            return now - quitAt < AUTO_RELAUNCH_SUPPRESS_MS
+        }
 
         /** Monta a rota REST do player, ou null se origin/token estiverem vazios. Pura — testável sem Context. */
         fun buildRealApi(origin: String, token: String): String? {

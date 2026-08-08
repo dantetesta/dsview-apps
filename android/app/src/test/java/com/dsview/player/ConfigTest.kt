@@ -74,4 +74,38 @@ class ConfigTest {
     fun `normalizeDomain string invalida devolve vazio`() {
         assertEquals("", Config.normalizeDomain("não é um domínio"))
     }
+
+    // Bug real: "Sair" (ou desligar o auto-start) deixava o app preso num loop de relançamento —
+    // por ser HOME do aparelho, o Android religava na hora, e a supressão antiga (igualdade simples
+    // de boot-id, sem prazo) durava até reiniciar o TV box inteiro. Estes testes travam o
+    // comportamento correto: suprime só a rajada instantânea, nunca uma reabertura de verdade.
+    @Test
+    fun `shouldSuppress logo apos o fechamento no mesmo boot suprime`() {
+        val boot = 555L
+        val quitAt = 10_000L
+        assertEquals(true, Config.shouldSuppress(boot, quitAt, boot, quitAt + 1_000L))
+    }
+
+    @Test
+    fun `shouldSuppress passada a janela nao suprime mesmo no mesmo boot`() {
+        val boot = 556L
+        val quitAt = 10_000L
+        val muitoDepois = quitAt + Config.AUTO_RELAUNCH_SUPPRESS_MS + 1_000L
+        assertEquals(false, Config.shouldSuppress(boot, quitAt, boot, muitoDepois))
+    }
+
+    @Test
+    fun `shouldSuppress boot diferente nunca suprime`() {
+        assertEquals(false, Config.shouldSuppress(777L, 10_000L, 778L, 10_500L))
+    }
+
+    @Test
+    fun `shouldSuppress nunca fechou de proposito nao suprime`() {
+        assertEquals(false, Config.shouldSuppress(0L, 0L, 999L, 999_999L))
+    }
+
+    @Test
+    fun `shouldSuppress config legado sem quitAt nao suprime`() {
+        assertEquals(false, Config.shouldSuppress(42L, 0L, 42L, 100L))
+    }
 }

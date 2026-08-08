@@ -38,11 +38,16 @@ prune/clear) · `Config` (SharedPreferences) · `StateStore` (last-good.json) ·
    (o `player.js` só desmuta quando seu `audioOn` vira true). Um sem o outro = mudo.
 4. **Offline sem device → setup** (`MainActivity.route`), senão o player mostraria o form de senha dele.
    Só-online → carrega `/play/{token}` remoto (o `shouldOverrideUrlLoading` libera o origin configurado).
-5. **Auto-start só reabre no boot de verdade.** `BootReceiver` só dispara em evento real de boot (correto por
-   natureza), mas se o app for a **tela inicial (HOME)** do aparelho, `finish()` sozinho não "fecha" nada — o Android
-   sempre precisa de um HOME de pé e reinvoca. Por isso o "Sair" do menu grava `Config.quitUntilBoot = Config.bootId()`
-   (mesmo truque do app Windows, via `SystemClock.elapsedRealtime()`) e `MainActivity.onCreate` recusa montar UI
-   enquanto o boot-id bater — só um reboot de verdade libera de novo. BACK/MENU (equivalente ao ESC do Windows) e o
+5. **"Sair" precisa soltar o HOME, não só `finish()`.** Se o app for a **tela inicial (HOME)** do aparelho (é
+   assim que o auto-start "à prova de bala" funciona), o Android sempre precisa de um HOME de pé e reinvoca este
+   Activity na hora — chamar só `finish()` virava **loop infinito** (bug real relatado por cliente: apertava
+   "Sair", TV box nunca saía da playlist, preso até desligar na força). `MainActivity.exitKiosk()` chama
+   `packageManager.clearPackagePreferredActivities()` (API pública, sem permissão especial) e entrega o controle a
+   outro launcher instalado no aparelho, se houver um. `Config.suppressAutoRelaunch()`/`shouldSuppressStartup()`
+   seguram só uma janela CURTA (`AUTO_RELAUNCH_SUPPRESS_MS` = 8s, mesmo valor do app Windows) — o suficiente pra
+   barrar o Android religando na hora, sem travar uma reabertura de verdade minutos depois (bug irmão do Windows:
+   antes a supressão durava até reiniciar o aparelho inteiro). Desligar o auto-start nas configurações faz o
+   mesmo: solta a preferência de HOME também, não só o flag interno. BACK/MENU (equivalente ao ESC do Windows) e o
    "x" discreto do `player.html` (hover, se houver mouse) levam pro setup sem fechar o app.
 6. **Sync por `version`**: só rebaixa quando `payload.version` muda (depende do plugin bumpar). Tudo atômico
    (mídia `.part`→rename; last-good só depois de tudo no disco; então prune).
