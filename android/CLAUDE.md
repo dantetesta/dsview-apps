@@ -25,7 +25,14 @@ binário agora, não dois projetos em paralelo. Ícone/banner/logo em uso vêm d
 `/media/{hash}` com Range, + `/setup` `/player` `/assets/…` + API `/dsf/…` do setup) · `Syncer` (=sync.js: syncOnce por
 `version`, authenticate, loop de intervalo) · `MediaCache` (=cache.js: `filesDir/media`, sha1+ext, download atômico,
 prune/clear) · `Config` (SharedPreferences) · `StateStore` (last-good.json) · `Resolver` (=resolve.js) ·
-`MainActivity` (WebView kiosk; menu no Voltar/Menu) · `BootReceiver` (auto-start).
+`MainActivity` (WebView kiosk; menu no Voltar/Menu) · `BootReceiver` (auto-start) · `Updater` (auto-update).
+
+`Updater` — auto-update via GitHub Releases (repo público `dsview-apps`, "latest"). Extrai a versão do
+**nome do asset** (`dsview-android-X.Y.Z.apk`), não da tag do release. `checkLatest()` compara com o
+`versionName` instalado; `downloadAndInstall()` baixa pro `cacheDir` e chama `ACTION_VIEW` com o APK via
+`FileProvider` (manifest: `REQUEST_INSTALL_PACKAGES` + `<provider>`). **O Android SEMPRE pede confirmação
+do usuário pra instalar** — nenhum app consegue se auto-atualizar em silêncio fora de ser app de sistema;
+isto só poupa o caminho manual. Espelha `updater.js` do app Windows.
 
 ## Regras de domínio / gotchas
 1. **Player é single-source do plugin.** `assets/player.js|css` são **cópias gitignoradas** — a task Gradle `copyPlayer`

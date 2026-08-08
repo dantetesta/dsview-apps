@@ -9,6 +9,10 @@
          padrão (background activity start). Esta permissão é a isenção oficial. Sem ela, o
          auto-start falhava em silêncio justamente nos aparelhos mais novos. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Auto-update: instalar um APK baixado (não da Play Store) exige esta permissão desde o
+         Android 8. O usuário concede na tela de Configurações que o próprio Android abre ao
+         tentar instalar sem ela — não dá pra conceder por código, só pedir. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Roda em qualquer Android: TV (sem touch, com controle) e celular/tablet (com touch). -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -61,6 +65,19 @@
              Amlogic/MediaTek de verdade não mandam BOOT_COMPLETED (gotcha já documentado) — o pior
              caso do risco residual é outro app relançar o kiosk, não vazar dado nenhum.
              ponytail: risco aceito, upgrade se algum cliente reportar abuso de verdade. -->
+        <!-- Compartilha o APK baixado (cache do app) com o instalador do sistema. Desde o Android 7,
+             um file:// cru entre apps é bloqueado (FileUriExposedException) — precisa de content://
+             via FileProvider, autoridade única por pacote pra não colidir com outros apps instalados. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"

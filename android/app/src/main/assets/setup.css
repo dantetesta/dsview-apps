@@ -30,11 +30,17 @@ body {
   width: 100%; max-width: 560px; background: #fff; border: 1px solid var(--line);
   border-radius: 20px; padding: 30px 28px; box-shadow: 0 24px 60px -30px rgba(32,27,23,.4);
 }
-.head { text-align: center; margin-bottom: 22px; }
+.head { text-align: center; margin-bottom: 22px; position: relative; }
 .brand-row { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
   -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center; }
 .brand-row > * + * { margin-left: 12px; }
 .logo { height: 46px; width: auto; -webkit-flex: none; flex: none; }
+.gear-btn {
+  position: absolute; top: -4px; right: 0; background: transparent; border: 0; cursor: pointer;
+  font-size: 20px; line-height: 1; padding: 8px; border-radius: 999px; opacity: .55;
+  -webkit-transition: opacity .15s, background .15s; transition: opacity .15s, background .15s;
+}
+.gear-btn:hover, .gear-btn:focus { opacity: 1; background: var(--tint); }
 h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
 h1 span { color: var(--brand); }
 .sub { margin: 6px 0 0; color: #7c756c; color: var(--muted); font-size: 14px; }

@@ -165,6 +165,59 @@
     // sucesso: o processo principal já chamou app.quit() — a janela fecha sozinha.
   };
 
+  // ---------------------------------------------------------------- atualização (engrenagem)
+  function fmtBytes(n) {
+    if (!n) return '';
+    const mb = n / (1024 * 1024);
+    return mb >= 1 ? mb.toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB';
+  }
+
+  let updUrl = null;
+  const updCheckBtn = $('upd-check'), updStatus = $('upd-status'), updInstallRow = $('upd-install-row');
+  const updInstallBtn = $('upd-install'), updProgressWrap = $('upd-progress-wrap'), updProgress = $('upd-progress');
+  dsf.getVersion().then((v) => { $('upd-current').textContent = 'v' + v; }).catch(() => {});
+
+  updCheckBtn.onclick = async () => {
+    updCheckBtn.disabled = true;
+    updInstallRow.hidden = true;
+    updStatus.textContent = 'Verificando…';
+    const res = await dsf.checkUpdate();
+    updCheckBtn.disabled = false;
+    $('upd-current').textContent = 'v' + (res.current || '?');
+    if (!res.ok) {
+      updStatus.textContent = 'Não consegui verificar: ' + (res.error || 'erro desconhecido.');
+      return;
+    }
+    if (res.available) {
+      updUrl = res.downloadUrl;
+      updStatus.textContent = 'Versão nova disponível: v' + res.latest + (res.size ? ' (' + fmtBytes(res.size) + ')' : '') + '.';
+      updInstallRow.hidden = false;
+    } else {
+      updStatus.textContent = 'Você já está na versão mais recente.';
+    }
+  };
+
+  updInstallBtn.onclick = async () => {
+    if (!updUrl) return;
+    updInstallBtn.disabled = true;
+    updCheckBtn.disabled = true;
+    updProgressWrap.hidden = false;
+    updStatus.textContent = 'Baixando a atualização…';
+    const res = await dsf.installUpdate(updUrl);
+    if (!res || !res.ok) {
+      updInstallBtn.disabled = false;
+      updCheckBtn.disabled = false;
+      updStatus.textContent = 'Falha ao atualizar: ' + ((res && res.error) || 'erro desconhecido.');
+    }
+    // sucesso: o instalador silencioso assume e o processo principal encerra sozinho.
+  };
+
+  dsf.onUpdateProgress((s) => {
+    if (!s || !s.total) return;
+    updProgress.style.width = Math.round((s.recv / s.total) * 100) + '%';
+    updStatus.textContent = 'Baixando… ' + fmtBytes(s.recv) + ' de ' + fmtBytes(s.total);
+  });
+
   $('autostart').onchange = async (e) => {
     const aceito = await dsf.setAutostart(e.target.checked);
     if (e.target.checked && !aceito) {

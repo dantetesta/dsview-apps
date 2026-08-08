@@ -12,6 +12,9 @@
       <div class="brand-row">
         <img class="logo" src="/assets/logo-mark.png" alt="DS View" />
         <h1>DS <span>View</span></h1>
+        <!-- Faz parte do mesmo sistema de abas (initTabs casa por .tab-btn/data-tab) — só fica fora
+             da fileira .tabs visualmente, no canto do cabeçalho. -->
+        <button type="button" class="tab-btn gear-btn" data-tab="atualizacao" role="tab" aria-selected="false" title="Verificar atualização">⚙️</button>
       </div>
       <p class="sub">Configure sua playlist e inicie a exibição do conteúdo.</p>
     </header>
@@ -131,9 +134,25 @@
       </div>
     </section>
 
+    <section class="tab-panel" data-panel="atualizacao" hidden>
+      <div class="prefs-head">
+        <h2>Atualização</h2>
+      </div>
+      <p class="field-hint">Versão instalada: <b id="upd-current">—</b></p>
+      <div class="actions">
+        <button id="upd-check" class="btn primary" type="button">🔄 Verificar atualização</button>
+      </div>
+      <p id="upd-status" class="field-hint" style="margin-top:12px"></p>
+      <div id="upd-progress-wrap" class="bar" hidden style="margin-top:8px"><div id="upd-progress" class="bar-fill"></div></div>
+      <div class="actions" id="upd-install-row" hidden style="margin-top:12px">
+        <button id="upd-install" class="btn primary" type="button">⬇ Baixar e instalar</button>
+      </div>
+      <p class="field-hint" style="margin-top:12px">O Android sempre pede sua confirmação antes de instalar — isto só prepara o pacote.</p>
+    </section>
+
     <footer class="foot split">
       <span>Botão <b>Voltar</b> ou <b>Menu</b> do controle reabre estas opções.</span>
-      <span class="version">v0.5.5</span>
+      <span class="version">v0.5.6</span>
     </footer>
   </main>
 

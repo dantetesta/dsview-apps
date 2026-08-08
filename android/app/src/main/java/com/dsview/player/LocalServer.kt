@@ -256,6 +256,30 @@ class LocalServer(
                     json(JSONObject().put("ok", false).put("error", e.message ?: "Não consegui abrir a tela de remoção."))
                 }
             }
+            "app-version" -> json(
+                JSONObject().put(
+                    "version",
+                    try { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?" } catch (e: Exception) { "?" }
+                )
+            )
+            // Auto-update: consulta o último release do GitHub, compara com a versão instalada.
+            "update-check" -> try {
+                json(Updater.checkLatest(context).put("ok", true))
+            } catch (e: Exception) {
+                json(JSONObject().put("ok", false).put("error", e.message ?: "Falha ao verificar atualização."))
+            }
+            // Baixa e dispara o instalador — roda numa thread própria (fire-and-forget); o setup
+            // acompanha o progresso pollando "update-status", mesmo padrão do "sync-status".
+            "update-install" -> {
+                val url = body.optString("url")
+                if (url.isEmpty()) {
+                    json(JSONObject().put("ok", false).put("error", "URL de atualização ausente."))
+                } else {
+                    Thread { Updater.downloadAndInstall(context, url) }.start()
+                    json(JSONObject().put("ok", true))
+                }
+            }
+            "update-status" -> json(Updater.status)
             else -> newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
         }
     }

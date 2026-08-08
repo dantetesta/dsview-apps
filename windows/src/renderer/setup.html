@@ -12,6 +12,9 @@
       <div class="brand-row">
         <img class="logo" src="logo-mark.png" alt="DS View" />
         <h1>DS <span>View</span></h1>
+        <!-- Faz parte do mesmo sistema de abas (initTabs em setup.js casa por .tab-btn/data-tab) —
+             só fica fora da fileira .tabs visualmente, no canto do cabeçalho. -->
+        <button type="button" class="tab-btn gear-btn" data-tab="atualizacao" role="tab" aria-selected="false" title="Verificar atualização">⚙️</button>
       </div>
       <p class="sub">Configure sua playlist e inicie a exibição do conteúdo.</p>
     </header>
@@ -121,6 +124,21 @@
       <p id="autostart-ok" class="aviso-ok" hidden></p>
     </section>
 
+    <section class="tab-panel" data-panel="atualizacao" hidden>
+      <div class="prefs-head">
+        <h2>Atualização</h2>
+      </div>
+      <p class="field-hint">Versão instalada: <b id="upd-current">—</b></p>
+      <div class="actions">
+        <button id="upd-check" class="btn primary">🔄 Verificar atualização</button>
+      </div>
+      <p id="upd-status" class="field-hint" style="margin-top:12px"></p>
+      <div id="upd-progress-wrap" class="bar" hidden style="margin-top:8px"><div id="upd-progress" class="bar-fill"></div></div>
+      <div class="actions" id="upd-install-row" hidden style="margin-top:12px">
+        <button id="upd-install" class="btn primary">⬇ Baixar e instalar</button>
+      </div>
+    </section>
+
     <div class="quit-row">
       <button id="quit" class="btn danger" title="Encerra o DS View (fecha o programa)">⏻ Encerrar o aplicativo</button>
       <button id="uninstall" class="btn danger" title="Remove o DS View deste computador">🗑 Remover aplicativo</button>
@@ -128,7 +146,7 @@
 
     <footer class="foot split">
       <span>Botão direito reabre este menu. Sair do kiosk: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>.</span>
-      <span class="version">v0.4.3</span>
+      <span class="version">v0.4.4</span>
     </footer>
   </main>
 

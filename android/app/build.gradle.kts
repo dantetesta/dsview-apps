@@ -20,8 +20,8 @@ android {
         applicationId = "com.dsview.player"
         minSdk = 21          // Android 5.0 — cobre TV boxes e Android TV antigos.
         targetSdk = 34
-        versionCode = 11
-        versionName = "0.5.5"
+        versionCode = 12
+        versionName = "0.5.6"
     }
 
     signingConfigs {
@@ -77,4 +77,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
     testImplementation("junit:junit:4.13.2")
+    // Só em teste: o org.json que vem do SDK do Android é um STUB (método real lança "Stub!") — sem
+    // isso, UpdaterTest não roda em JVM puro nenhuma linha que toque JSONObject/JSONArray. Mesma
+    // implementação de referência que o Android usa por baixo, então o comportamento bate igual.
+    testImplementation("org.json:json:20240303")
 }

@@ -75,6 +75,7 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
 | `src/renderer/player.html` | Injeta `window.DSF_PLAYER = {api:'http://127.0.0.1:{port}/state', token}` e carrega o `player.js`. |
 | `src/renderer/player.js` · `player.css` | **CÓPIA do plugin — gitignorada, NÃO editar aqui.** Ver "Regras de domínio". |
 | `scripts/copy-player.js` | Copia `player.js`/`player.css` de `../../ds-facil/player/` → `src/renderer/`. Roda em `npm start`/`dist`. Se o plugin não estiver ao lado, avisa mas não trava o build. |
+| `src/main/updater.js` | Auto-update via GitHub Releases (repo público `dsview-apps`, "latest"). Extrai a versão do **nome do asset** (`dsview-windows-setup-X.Y.Z.exe`), não da tag do release (um release combina os dois apps). `checkLatest()` compara com `app.getVersion()`; `download()` baixa pro temp com progresso; `main.js` roda o instalador com `/S` (silencioso, funciona mesmo com `oneClick:false`) **detached** e dá `app.quit()` — mesma técnica do "Remover aplicativo". Sem assinatura de código: o binário baixado ainda pode ser barrado por SmartScreen/Defender, risco aceito (documentado, sem cert Windows). |
 
 ## Modelo de dados
 

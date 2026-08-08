@@ -233,6 +233,84 @@
       if (!res || !res.ok) showToast((res && res.error) || 'Não consegui abrir a tela de remoção.');
     });
   };
+
+  // ---------------------------------------------------------------- atualização (engrenagem)
+  function fmtBytes(n) {
+    if (!n) return '';
+    var mb = n / (1024 * 1024);
+    return mb >= 1 ? mb.toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB';
+  }
+
+  var updUrl = null;
+  var updStatusTimer = null;
+  var updCheckBtn = $('upd-check'), updStatus = $('upd-status'), updInstallRow = $('upd-install-row');
+  var updInstallBtn = $('upd-install'), updProgressWrap = $('upd-progress-wrap'), updProgress = $('upd-progress');
+
+  getJson('/dsf/app-version').then(function (r) {
+    $('upd-current').textContent = 'v' + (r.version || '?');
+  }).catch(function () {});
+
+  updCheckBtn.onclick = function () {
+    updCheckBtn.disabled = true;
+    updInstallRow.hidden = true;
+    updStatus.textContent = 'Verificando…';
+    postJson('/dsf/update-check', {}).then(function (res) {
+      updCheckBtn.disabled = false;
+      if (res.current) $('upd-current').textContent = 'v' + res.current;
+      if (!res.ok) {
+        updStatus.textContent = 'Não consegui verificar: ' + (res.error || 'erro desconhecido.');
+        return;
+      }
+      if (res.available) {
+        updUrl = res.downloadUrl;
+        updStatus.textContent = 'Versão nova disponível: v' + res.latest + (res.size ? ' (' + fmtBytes(res.size) + ')' : '') + '.';
+        updInstallRow.hidden = false;
+      } else {
+        updStatus.textContent = 'Você já está na versão mais recente.';
+      }
+    });
+  };
+
+  updInstallBtn.onclick = function () {
+    if (!updUrl) return;
+    updInstallBtn.disabled = true;
+    updCheckBtn.disabled = true;
+    updProgressWrap.hidden = false;
+    updStatus.textContent = 'Baixando a atualização…';
+    postJson('/dsf/update-install', { url: updUrl }).then(function (res) {
+      if (!res || !res.ok) {
+        updInstallBtn.disabled = false;
+        updCheckBtn.disabled = false;
+        updStatus.textContent = 'Falha ao atualizar: ' + ((res && res.error) || 'erro desconhecido.');
+        return;
+      }
+      pollUpdateStatus();
+    });
+  };
+
+  // Mesmo padrão do progresso de sync (poll a cada 500ms) — HTTP local não empurra evento sozinho.
+  function pollUpdateStatus() {
+    getJson('/dsf/update-status').then(function (s) {
+      if (!s || !s.phase) return;
+      if (s.phase === 'downloading' && s.total) {
+        updProgress.style.width = Math.round((s.received / s.total) * 100) + '%';
+        updStatus.textContent = 'Baixando… ' + fmtBytes(s.received) + ' de ' + fmtBytes(s.total);
+        updStatusTimer = setTimeout(pollUpdateStatus, 500);
+      } else if (s.phase === 'installing') {
+        updStatus.textContent = 'Abrindo o instalador…';
+        // fim do polling: a tela de instalação do sistema assume a partir daqui.
+      } else if (s.phase === 'error') {
+        updInstallBtn.disabled = false;
+        updCheckBtn.disabled = false;
+        updStatus.textContent = 'Falha ao atualizar: ' + (s.error || 'erro desconhecido.');
+      } else {
+        updStatusTimer = setTimeout(pollUpdateStatus, 500);
+      }
+    }).catch(function () {
+      updStatusTimer = setTimeout(pollUpdateStatus, 500);
+    });
+  }
+
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) atualizarAutostart(); // voltou da tela do sistema: reavalia
   });

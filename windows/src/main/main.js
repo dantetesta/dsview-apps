@@ -22,6 +22,7 @@ const server = require('./server');
 const sync = require('./sync');
 const cache = require('./cache');
 const state = require('./state');
+const updater = require('./updater');
 
 // TV/kiosk: libera autoplay COM som sem exigir gesto do usuário (respeitando o flag `audio` de cada item).
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -245,6 +246,38 @@ function wireIpc() {
     }
     app.quit();
     return { ok: true };
+  });
+
+  ipcMain.handle('app:version', () => app.getVersion());
+
+  /** Verifica se há versão nova no GitHub (repo dsview-apps, release "latest"). */
+  ipcMain.handle('update:check', async () => {
+    try {
+      return { ok: true, ...(await updater.checkLatest()) };
+    } catch (err) {
+      return { ok: false, error: err.message || 'Falha ao verificar atualização.' };
+    }
+  });
+
+  /**
+   * Baixa o instalador da URL informada (vem de `update:check`, não é livre — a tela de update só
+   * chama isto com a URL que ELA MESMA recebeu do GitHub) e roda silencioso (`/S`, flag padrão do
+   * NSIS — funciona mesmo com `oneClick:false`, que só muda o comportamento interativo). Mesma
+   * técnica do "Remover aplicativo": o instalador precisa sobreviver ao nosso `app.quit()` pra
+   * conseguir substituir os arquivos em uso, por isso `detached`+`unref`.
+   */
+  ipcMain.handle('update:install', async (_e, url) => {
+    try {
+      const dst = await updater.download(url, (recv, total) => {
+        if (win && !win.isDestroyed()) win.webContents.send('update:progress', { recv, total });
+      });
+      const child = spawn(dst, ['/S'], { detached: true, stdio: 'ignore' });
+      child.unref();
+      app.quit();
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err.message || 'Falha ao baixar/instalar a atualização.' };
+    }
   });
 
   // Favoritos
