@@ -97,7 +97,7 @@ h1 span { color: var(--brand); }
 .toast.show { opacity: 1; }
 .toast[hidden] { display: none; }
 
-.quit-row { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; justify-content: center; }
+.quit-row { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 .btn.danger { background: transparent; color: #b42318; border: 2px solid #f2c4bd; }
 .btn.danger:hover { background: #fdecea; }
 .btn.danger.armed { background: #b42318; color: #fff; border-color: #b42318; }

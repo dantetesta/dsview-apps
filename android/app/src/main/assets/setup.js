@@ -211,6 +211,28 @@
 
   $('btn-home').onclick = function () { postJson('/dsf/autostart-home', {}); };
   $('btn-overlay').onclick = function () { postJson('/dsf/autostart-permitir', {}); };
+
+  // Remover o app: confirmação em 2 toques (mesmo padrão do app Windows) — ação rara e séria.
+  // O Android sempre pede a confirmação DELE mesmo depois (não dá pra apagar sem o usuário topar),
+  // isto só evita o caminho manual Configurações > Apps > DS View > Desinstalar.
+  var uninstallArmed = false, uninstallTimer = null;
+  $('uninstall').onclick = function () {
+    var btn = $('uninstall');
+    if (!uninstallArmed) {
+      uninstallArmed = true;
+      btn.classList.add('armed');
+      btn.textContent = '🗑 Toque de novo para remover';
+      uninstallTimer = setTimeout(function () {
+        uninstallArmed = false; btn.classList.remove('armed'); btn.textContent = '🗑 Remover aplicativo';
+      }, 3000);
+      return;
+    }
+    clearTimeout(uninstallTimer);
+    uninstallArmed = false; btn.classList.remove('armed'); btn.textContent = '🗑 Remover aplicativo';
+    postJson('/dsf/uninstall', {}).then(function (res) {
+      if (!res || !res.ok) showToast((res && res.error) || 'Não consegui abrir a tela de remoção.');
+    });
+  };
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) atualizarAutostart(); // voltou da tela do sistema: reavalia
   });

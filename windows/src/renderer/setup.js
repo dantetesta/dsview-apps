@@ -141,6 +141,30 @@
     dsf.quit();
   };
 
+  // Remover o app: mesma confirmação em 2 cliques, ação bem mais rara e mais séria que só encerrar.
+  let uninstallArmed = false, uninstallTimer = null;
+  $('uninstall').onclick = async () => {
+    const btn = $('uninstall');
+    if (!uninstallArmed) {
+      uninstallArmed = true;
+      btn.classList.add('armed');
+      btn.textContent = '🗑 Clique de novo para remover';
+      uninstallTimer = setTimeout(() => {
+        uninstallArmed = false; btn.classList.remove('armed'); btn.textContent = '🗑 Remover aplicativo';
+      }, 3000);
+      return;
+    }
+    clearTimeout(uninstallTimer);
+    btn.disabled = true;
+    const res = await dsf.uninstall();
+    if (!res || !res.ok) {
+      btn.disabled = false;
+      uninstallArmed = false; btn.classList.remove('armed'); btn.textContent = '🗑 Remover aplicativo';
+      showToast((res && res.error) || 'Não consegui iniciar a remoção.');
+    }
+    // sucesso: o processo principal já chamou app.quit() — a janela fecha sozinha.
+  };
+
   $('autostart').onchange = async (e) => {
     const aceito = await dsf.setAutostart(e.target.checked);
     if (e.target.checked && !aceito) {

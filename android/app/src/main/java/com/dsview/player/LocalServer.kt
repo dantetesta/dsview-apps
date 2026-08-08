@@ -243,6 +243,19 @@ class LocalServer(
                 val res = try { syncer.syncOnce() } catch (e: Exception) { JSONObject().put("ok", false) }
                 json(JSONObject().put("removed", removed).put("resync", res))
             }
+            // Android não deixa um app se apagar sozinho sem confirmação do usuário (por design, é
+            // segurança) — o máximo que o app pode fazer é abrir a tela de desinstalar já apontando
+            // pra si mesmo, com um toque a menos que o caminho manual (Configurações > Apps > DS View).
+            "uninstall" -> {
+                try {
+                    val i = Intent(Intent.ACTION_DELETE, android.net.Uri.parse("package:" + context.packageName))
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(i)
+                    json(JSONObject().put("ok", true))
+                } catch (e: Throwable) {
+                    json(JSONObject().put("ok", false).put("error", e.message ?: "Não consegui abrir a tela de remoção."))
+                }
+            }
             else -> newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
         }
     }

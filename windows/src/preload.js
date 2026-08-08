@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('dsf', {
   play: () => ipcRenderer.invoke('app:play'),
   openSetup: () => ipcRenderer.invoke('app:setup'),
   quit: () => ipcRenderer.invoke('app:quit'),
+  uninstall: () => ipcRenderer.invoke('app:uninstall'),
   favList: () => ipcRenderer.invoke('fav:list'),
   favAdd: (fav) => ipcRenderer.invoke('fav:add', fav),
   favRemove: (url) => ipcRenderer.invoke('fav:remove', url),

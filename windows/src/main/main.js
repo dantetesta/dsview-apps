@@ -10,7 +10,8 @@
 'use strict';
 const path = require('path');
 const os = require('os');
-const { execFile } = require('child_process'); // usado só para ler o registro do Windows (login automático)
+const fs = require('fs');
+const { execFile, spawn } = require('child_process'); // execFile: registro do Windows; spawn: instalador NSIS
 const {
   app, BrowserWindow, Menu, ipcMain, powerSaveBlocker, globalShortcut,
 } = require('electron');
@@ -222,6 +223,29 @@ function wireIpc() {
   ipcMain.handle('app:play', () => { loadPlayer(); return true; });
   ipcMain.handle('app:setup', () => { exitKioskToSetup(); return true; }); // "x" do canto do player.
   ipcMain.handle('app:quit', () => { quitForGood(); return true; }); // botão "Encerrar" do setup.
+
+  /**
+   * "Remover aplicativo": dispara o desinstalador NSIS que o electron-builder já gera do lado do
+   * instalador ("Uninstall DS View.exe", na mesma pasta do executável rodando) e sai. Um processo
+   * não consegue apagar o próprio .exe em uso no Windows — por isso o desinstalador roda DESTACADO
+   * (detached + unref), sobrevive ao nosso app.quit() e termina a limpeza sozinho. Sem instalador
+   * NSIS por perto (build de dev, `dist:dir`), devolve erro em vez de fingir que funcionou.
+   */
+  ipcMain.handle('app:uninstall', () => {
+    const dir = path.dirname(process.execPath);
+    const uninstaller = path.join(dir, 'Uninstall DS View.exe');
+    if (!fs.existsSync(uninstaller)) {
+      return { ok: false, error: 'Desinstalador não encontrado (instalação feita fora do instalador oficial?).' };
+    }
+    try {
+      const child = spawn(uninstaller, [], { detached: true, stdio: 'ignore' });
+      child.unref();
+    } catch (err) {
+      return { ok: false, error: err.message || 'Falha ao iniciar o desinstalador.' };
+    }
+    app.quit();
+    return { ok: true };
+  });
 
   // Favoritos
   ipcMain.handle('fav:list', () => config.read().favorites || []);
