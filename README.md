@@ -180,13 +180,14 @@ algo como 12 tentativas / 10 min por token), mesmo formato de erro do `404` acim
     {
       "kind": "weather",
       "template": "today_3days",
+      "theme": "sunset",
       "location_name": "São Paulo, São Paulo",
       "duration": 15,
       "current": { "temp": 24, "icon": "partly-cloudy", "label": "Parcialmente nublado", "humidity": 65, "wind": 12 },
       "days": [
         { "weekday": "Qui", "icon": "rain", "label": "Chuva", "max": 24, "min": 17 }
       ],
-      "sig": "-23.55_-46.63|today_3days|2026-08-11 15:00:00"
+      "sig": "-23.55_-46.63|today_3days|sunset|2026-08-11 15:00:00"
     }
   ]
 }
@@ -230,6 +231,7 @@ faz chamada de API própria:
 |---|---|---|
 | `kind` | `"weather"` | — |
 | `template` | `"today"` \| `"today_3days"` | `today` mostra só a condição atual; `today_3days` acrescenta a previsão dos 3 dias seguintes |
+| `theme` | `"slate"` \| `"sunset"` \| `"dawn"` \| `"ocean"` \| `"forest"` \| `"aurora"` | paleta do gradiente de fundo do cartão, escolhida no editor. O player de referência define os 6 gradientes em CSS (`.dsf-weather-theme-*`); um consumidor próprio pode ignorar e aplicar o tema dele |
 | `location_name` | string | nome do local pra exibir (ex.: "São Paulo, São Paulo") |
 | `duration` | number | segundos em tela, mínimo 1 |
 | `current` | object \| null | `{ temp, icon, label, humidity, wind }` — `icon` é uma chave curta (`sun`, `partly-cloudy`, `cloudy`, `fog`, `drizzle`, `rain`, `snow`, `storm`), não um código meteorológico numérico |
