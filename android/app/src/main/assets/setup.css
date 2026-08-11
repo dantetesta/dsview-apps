@@ -36,11 +36,12 @@ body {
 .brand-row > * + * { margin-left: 12px; }
 .logo { height: 46px; width: auto; -webkit-flex: none; flex: none; }
 .gear-btn {
-  position: absolute; top: -4px; right: 0; background: transparent; border: 0; cursor: pointer;
-  font-size: 20px; line-height: 1; padding: 8px; border-radius: 999px; opacity: .55;
-  -webkit-transition: opacity .15s, background .15s; transition: opacity .15s, background .15s;
+  display: inline-block; margin: 10px 0 0; background: transparent; border: 0; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 700; color: var(--muted); line-height: 1;
+  padding: 6px 14px; border-radius: 999px; opacity: .8;
+  -webkit-transition: opacity .15s, background .15s, color .15s; transition: opacity .15s, background .15s, color .15s;
 }
-.gear-btn:hover, .gear-btn:focus { opacity: 1; background: var(--tint); }
+.gear-btn:hover, .gear-btn:focus { opacity: 1; background: var(--tint); color: var(--brand); }
 h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
 h1 span { color: var(--brand); }
 .sub { margin: 6px 0 0; color: #7c756c; color: var(--muted); font-size: 14px; }
