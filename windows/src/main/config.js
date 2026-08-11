@@ -9,7 +9,7 @@ const { app } = require('electron');
 
 const FILE = path.join(app.getPath('userData'), 'dsview-config.json');
 
-const SYNC_MIN = 5;
+const SYNC_MIN = 1;
 const SYNC_MAX = 1440; // 24h
 const SYNC_DEFAULT = 60;
 

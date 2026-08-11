@@ -49,6 +49,13 @@ private val CONSOLE_NOISE = listOf(
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        /** Instância viva enquanto o Activity está em primeiro plano — permite o botão "Fechar
+         * aplicativo" da tela de setup (rodando no servidor local, sem referência ao Activity)
+         * disparar `exitKiosk()` via `requestExit()`. */
+        @Volatile var instance: MainActivity? = null
+    }
+
     private var web: WebView? = null
     private val app: App get() = application as App
     private val base: String get() = "http://127.0.0.1:${app.server.listeningPort}"
@@ -311,7 +318,13 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    override fun onResume() { super.onResume(); immersive() }
+    override fun onResume() { super.onResume(); instance = this; immersive() }
+
+    override fun onPause() { if (instance === this) instance = null; super.onPause() }
+
+    /** Fechar pela tela de setup (botão, sem o BACK/MENU físico) — chamado do servidor local,
+     * numa thread própria da NanoHTTPD, então salta pra UI thread antes de mexer no Activity. */
+    fun requestExit() { runOnUiThread { exitKiosk() } }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)

@@ -6,8 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const config = require('../src/main/config');
 
-test('syncIntervalMin: clampa abaixo do mínimo (5)', () => {
-  assert.equal(config.syncIntervalMin({ syncInterval: 1 }), 5);
+test('syncIntervalMin: clampa abaixo do mínimo (1)', () => {
+  assert.equal(config.syncIntervalMin({ syncInterval: 0 }), 1);
 });
 
 test('syncIntervalMin: clampa acima do máximo (1440)', () => {

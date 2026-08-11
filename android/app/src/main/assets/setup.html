@@ -94,6 +94,9 @@
           <span class="input-wrap">
             <span class="input-icon" aria-hidden="true">⏱️</span>
             <select id="interval">
+              <option value="1">1 minuto</option>
+              <option value="2">2 minutos</option>
+              <option value="3">3 minutos</option>
               <option value="5">5 minutos</option>
               <option value="10">10 minutos</option>
               <option value="15">15 minutos</option>
@@ -130,6 +133,7 @@
       <p id="autostart-ok" class="aviso-ok" hidden>Abertura automática configurada.</p>
 
       <div class="quit-row">
+        <button id="quit" class="btn danger" type="button" title="Fecha o DS View">⏻ Fechar aplicativo</button>
         <button id="uninstall" class="btn danger" type="button" title="Remove o DS View deste aparelho">🗑 Remover aplicativo</button>
       </div>
     </section>
@@ -152,7 +156,7 @@
 
     <footer class="foot split">
       <span>Botão <b>Voltar</b> ou <b>Menu</b> do controle reabre estas opções.</span>
-      <span class="version">v0.5.6</span>
+      <span class="version">v0.5.7</span>
     </footer>
   </main>
 

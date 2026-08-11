@@ -35,7 +35,7 @@ binário agora. Ícone/logo em uso vêm da marca DS View oficial (`src/renderer/
   o servidor remoto**. O player só fala com o local; um **loop de sync** (intervalo configurável) baixa mídia nova, remove
   a que saiu e mantém o disco como espelho do online. Internet caiu → toca do cache sem perceber.
   **Desligado → modo só-online:** carrega a página real `/play/{token}` direto, sem cache nem servidor local.
-- **Intervalo de consulta configurável:** min 5 min · **padrão 60 min** · max 24 h.
+- **Intervalo de consulta configurável:** min 1 min · **padrão 60 min** · max 24 h.
 - **Limpar dados offline:** botão no setup que apaga toda a mídia + a "última versão boa" e rebaixa do zero.
 - **Preloader** no 1º acesso / troca de playlist (só no modo offline; baixa tudo antes de iniciar, com barra de progresso).
 - **Auto-start no boot** do Windows (opção): liga → ao ligar o PC o app abre sozinho em fullscreen e inicia a playlist.
@@ -64,7 +64,7 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
 | Arquivo | Papel |
 |---|---|
 | `src/main/main.js` | Entrypoint. Cria a `BrowserWindow` kiosk (frame:false, fullscreen, backgroundThrottling:false), bloqueia navegação externa e `window.open` (libera o origin configurado p/ o modo só-online), monta o menu de contexto, faz o wiring de todo o IPC, single-instance lock, `powerSaveBlocker`, atalho global **Ctrl+Shift+Q** = sair, aplica auto-start. `routeStartup()` decide: player se já configurado, senão setup. `loadPlayer()` ramifica: **offline** → `player.html` local; **só-online** → `loadURL(origin/play/{token})`. |
-| `src/main/config.js` | Config persistente (`userData/dsview-config.json`). Campos em **Modelo de dados** abaixo. `realApi(cfg)` monta `origin + /wp-json/ds-facil/v1/player/{token}` (null se não configurado). `syncIntervalMin()`/`setSyncInterval()` clampam o intervalo em 5..1440 min. Nunca crasha por falha de disco. |
+| `src/main/config.js` | Config persistente (`userData/dsview-config.json`). Campos em **Modelo de dados** abaixo. `realApi(cfg)` monta `origin + /wp-json/ds-facil/v1/player/{token}` (null se não configurado). `syncIntervalMin()`/`setSyncInterval()` clampam o intervalo em 1..1440 min. Nunca crasha por falha de disco. |
 | `src/main/state.js` | "Última versão boa" do payload — o **original, sem reescrita de URL** — em `userData/last-good.json` + memoizado. É o que permite abrir offline depois de um reboot. |
 | `src/main/server.js` | Servidor local `127.0.0.1:0` (porta alta aleatória). Imita a forma da API do player. `rewrite()` troca o `src` das mídias **cacheadas** por `/media/{hash}` (YouTube/Vimeo ficam intactos). |
 | `src/main/cache.js` | Espelho de mídia no disco (`userData/media/`). Nome = `sha1(url)+ext` (determinístico, sem manifesto). Download **atômico** (`.part`→`rename`). `prune()` apaga o que saiu do payload; `clear()` apaga tudo (reset do cache). |
@@ -81,7 +81,7 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
 
 **`config.json`** (userData): `{ origin, token, device, favorites:[{name,url}], autostart, offline, syncInterval, lastUrl }`.
 `device` = device_token do 1º `/auth` (permite offline sem re-senha). **Trocar de playlist zera o `device`.**
-`offline` (bool, default `true`) = usa cache local; `false` = só-online. `syncInterval` (min, default 60, clamp 5..1440).
+`offline` (bool, default `true`) = usa cache local; `false` = só-online. `syncInterval` (min, default 60, clamp 1..1440).
 
 **`last-good.json`** (userData): o payload original da última sync boa. Contrato consumido do plugin:
 `{ version, queue:[{ src, provider, kind, audio, ... }] }`. Só é usado quando `version` muda (economiza download).

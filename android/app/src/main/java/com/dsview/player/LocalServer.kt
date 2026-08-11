@@ -243,6 +243,12 @@ class LocalServer(
                 val res = try { syncer.syncOnce() } catch (e: Exception) { JSONObject().put("ok", false) }
                 json(JSONObject().put("removed", removed).put("resync", res))
             }
+            // Fechar pela tela de setup (mesmo "Sair" do menu Voltar/Menu, só que disparado por um
+            // botão em vez do menu físico) — solta o HOME e encerra, sem desinstalar nada.
+            "exit" -> {
+                MainActivity.instance?.requestExit()
+                json(JSONObject().put("ok", true))
+            }
             // Android não deixa um app se apagar sozinho sem confirmação do usuário (por design, é
             // segurança) — o máximo que o app pode fazer é abrir a tela de desinstalar já apontando
             // pra si mesmo, com um toque a menos que o caminho manual (Configurações > Apps > DS View).

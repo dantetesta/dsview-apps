@@ -122,7 +122,7 @@ class Config(context: Context) {
         .put("lastBootLaunch", lastBootLaunch).put("baseDomain", baseDomain)
 
     companion object {
-        const val SYNC_MIN = 5
+        const val SYNC_MIN = 1
         const val SYNC_MAX = 1440
         const val SYNC_DEFAULT = 60
 

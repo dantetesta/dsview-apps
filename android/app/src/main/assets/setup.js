@@ -212,6 +212,24 @@
   $('btn-home').onclick = function () { postJson('/dsf/autostart-home', {}); };
   $('btn-overlay').onclick = function () { postJson('/dsf/autostart-permitir', {}); };
 
+  // Fechar o app: confirmação em 2 toques (mesmo padrão do "Remover aplicativo" logo abaixo e do
+  // botão "Encerrar o aplicativo" do app Windows). Solta o HOME e encerra — não desinstala nada.
+  var quitArmed = false, quitTimer = null;
+  $('quit').onclick = function () {
+    var btn = $('quit');
+    if (!quitArmed) {
+      quitArmed = true;
+      btn.classList.add('armed');
+      btn.textContent = '⏻ Toque de novo para fechar';
+      quitTimer = setTimeout(function () {
+        quitArmed = false; btn.classList.remove('armed'); btn.textContent = '⏻ Fechar aplicativo';
+      }, 3000);
+      return;
+    }
+    clearTimeout(quitTimer);
+    postJson('/dsf/exit', {});
+  };
+
   // Remover o app: confirmação em 2 toques (mesmo padrão do app Windows) — ação rara e séria.
   // O Android sempre pede a confirmação DELE mesmo depois (não dá pra apagar sem o usuário topar),
   // isto só evita o caminho manual Configurações > Apps > DS View > Desinstalar.

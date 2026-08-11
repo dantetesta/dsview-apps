@@ -8,7 +8,7 @@ class ConfigTest {
 
     @Test
     fun `clampInterval clampa abaixo do minimo`() {
-        assertEquals(Config.SYNC_MIN, Config.clampInterval(1))
+        assertEquals(Config.SYNC_MIN, Config.clampInterval(0))
     }
 
     @Test

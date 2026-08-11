@@ -55,7 +55,11 @@ isto só poupa o caminho manual. Espelha `updater.js` do app Windows.
    barrar o Android religando na hora, sem travar uma reabertura de verdade minutos depois (bug irmão do Windows:
    antes a supressão durava até reiniciar o aparelho inteiro). Desligar o auto-start nas configurações faz o
    mesmo: solta a preferência de HOME também, não só o flag interno. BACK/MENU (equivalente ao ESC do Windows) e o
-   "x" discreto do `player.html` (hover, se houver mouse) levam pro setup sem fechar o app.
+   "x" discreto do `player.html` (hover, se houver mouse) levam pro setup sem fechar o app. O botão **"Fechar
+   aplicativo"** na tela de setup (paridade com o "Encerrar o aplicativo" do Windows) chama o mesmo `exitKiosk()`
+   por outro caminho: `LocalServer` roda numa thread própria (NanoHTTPD), sem referência ao `Activity`, então
+   `MainActivity` guarda `instance` (companion, setado em `onResume`/limpo em `onPause`) e expõe `requestExit()`
+   (`runOnUiThread { exitKiosk() }`) — a rota `/dsf/exit` chama `MainActivity.instance?.requestExit()`.
 6. **Sync por `version`**: só rebaixa quando `payload.version` muda (depende do plugin bumpar). Tudo atômico
    (mídia `.part`→rename; last-good só depois de tudo no disco; então prune).
 7. **Depende do contrato público do plugin** (endpoints `/wp-json/ds-facil/v1/player/{token}` + `/auth`, campos
