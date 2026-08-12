@@ -231,7 +231,8 @@ faz chamada de API própria:
 |---|---|---|
 | `kind` | `"weather"` | — |
 | `template` | `"today"` \| `"today_3days"` | `today` mostra só a condição atual; `today_3days` acrescenta a previsão dos 3 dias seguintes |
-| `theme` | `"slate"` \| `"sunset"` \| `"dawn"` \| `"ocean"` \| `"forest"` \| `"aurora"` | paleta do gradiente de fundo do cartão, escolhida no editor. O player de referência define os 6 gradientes em CSS (`.dsf-weather-theme-*`); um consumidor próprio pode ignorar e aplicar o tema dele |
+| `theme` | `"slate"` \| `"sunset"` \| `"dawn"` \| `"ocean"` \| `"forest"` \| `"aurora"` \| `"custom"` | paleta do gradiente de fundo do cartão, escolhida no editor. Os 6 primeiros são gradientes fixos em CSS (`.dsf-weather-theme-*`); `"custom"` usa `custom_colors` abaixo em vez de CSS |
+| `custom_colors` | array de strings | só presente/relevante quando `theme = "custom"` — de 2 a 6 cores hex (`#RRGGBB`) escolhidas pelo usuário; o player de referência monta `linear-gradient(135deg, ...)` a partir delas via `style` inline, não CSS |
 | `location_name` | string | nome do local pra exibir (ex.: "São Paulo, São Paulo") |
 | `duration` | number | segundos em tela, mínimo 1 |
 | `current` | object \| null | `{ temp, icon, label, humidity, wind }` — `icon` é uma chave curta (`sun`, `partly-cloudy`, `cloudy`, `fog`, `drizzle`, `rain`, `snow`, `storm`), não um código meteorológico numérico |
