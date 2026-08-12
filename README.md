@@ -188,6 +188,28 @@ algo como 12 tentativas / 10 min por token), mesmo formato de erro do `404` acim
         { "weekday": "Qui", "icon": "rain", "label": "Chuva", "max": 24, "min": 17 }
       ],
       "sig": "-23.55_-46.63|today_3days|sunset|2026-08-11 15:00:00"
+    },
+    {
+      "kind": "lottery",
+      "game": "megasena",
+      "duration": 20,
+      "result": {
+        "game": "megasena",
+        "label": "Mega-Sena",
+        "display_mode": "balls",
+        "concurso": 2789,
+        "data": "09/08/2026",
+        "dezenas": ["04", "15", "23", "31", "42", "59"],
+        "extra": {},
+        "acumulou": true,
+        "ganhadores": 0,
+        "valor_premio": 0,
+        "proximo_concurso": 2790,
+        "data_proximo_concurso": "13/08/2026",
+        "valor_estimado_proximo": 55000000,
+        "fetched_at": "2026-08-09 21:00:00"
+      },
+      "sig": "megasena|2026-08-09 21:00:00"
     }
   ]
 }
@@ -238,6 +260,36 @@ faz chamada de API própria:
 | `current` | object \| null | `{ temp, icon, label, humidity, wind }` — `icon` é uma chave curta (`sun`, `partly-cloudy`, `cloudy`, `fog`, `drizzle`, `rain`, `snow`, `storm`), não um código meteorológico numérico |
 | `days` | array | só presente/relevante em `today_3days`; cada item é `{ weekday, icon, label, max, min }` |
 | `sig` | string | identidade estável do conteúdo do item (localização + template + timestamp da última consulta) — como este `kind` não tem `src`/`external_id`, um consumidor próprio deve usar `sig` (não `kind+src`) para detectar "este item específico mudou" no hot-reload |
+
+**Item de loteria** (`kind: "lottery"`) — mídia dinâmica, sem arquivo. O resultado é **global** (mesmo
+dado pra todos os usuários do backend, um único cache por jogo, atualizado 1x/dia por cron) e já vem
+**resolvido**: o player só monta o cartão, nunca consulta a API de loteria própria:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `kind` | `"lottery"` | — |
+| `game` | string | slug do jogo (`megasena`, `lotofacil`, `quina`, `lotomania`, `timemania`, `duplasena`, `diadesorte`, `federal`, `supersete`, `maismilionaria`) |
+| `duration` | number | segundos em tela, mínimo 1 |
+| `result` | object | o último resultado conhecido do jogo — ver campos abaixo |
+| `sig` | string | identidade estável do conteúdo (`game + fetched_at`) — como este `kind` não tem `src`/`external_id`, um consumidor próprio deve usar `sig` para detectar "este item específico mudou" (novo sorteio) no hot-reload |
+
+Campos de `result`:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `label` | string | nome de exibição do jogo (ex.: "Mega-Sena") |
+| `display_mode` | `"balls"` \| `"tickets"` \| `"columns"` | como desenhar `dezenas` — `balls` (padrão, bolinha numerada) pra maioria dos jogos; `tickets` só para `federal` (5 bilhetes de 6 dígitos, não são "dezenas sorteadas" no sentido usual); `columns` só para `supersete` (7 colunas de 1 dígito cada) |
+| `concurso` | number | número do concurso/sorteio |
+| `data` | string | data do sorteio, formato `DD/MM/AAAA` |
+| `dezenas` | array de strings | os números sorteados, já como string (preserva zero à esquerda, ex. `"04"`) — a interpretação depende de `display_mode` |
+| `extra` | object | campos extras só de alguns jogos: `trevos` (array de strings, só `maismilionaria`), `time_coracao` (string, só `timemania`), `mes_sorte` (string, só `diadesorte`) — ausentes nos demais jogos |
+| `acumulou` | boolean | se `true`, ninguém acertou a faixa principal (prêmio acumula pro próximo concurso) |
+| `ganhadores` | number | quantos acertaram a faixa principal (`0` se acumulou) |
+| `valor_premio` | number | valor do prêmio da faixa principal, em reais (não centavos) |
+| `proximo_concurso` | number \| null | número do próximo concurso |
+| `data_proximo_concurso` | string | data do próximo sorteio, formato `DD/MM/AAAA` |
+| `valor_estimado_proximo` | number \| null | estimativa de prêmio do próximo concurso, em reais |
+| `fetched_at` | string | timestamp UTC (`AAAA-MM-DD HH:MM:SS`) de quando esse resultado foi consultado — é o componente de `sig` que dispara o hot-reload quando sai um sorteio novo |
 
 ### Recomendações para quem implementar um backend compatível
 
