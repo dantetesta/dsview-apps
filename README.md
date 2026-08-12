@@ -210,6 +210,17 @@ algo como 12 tentativas / 10 min por token), mesmo formato de erro do `404` acim
         "fetched_at": "2026-08-09 21:00:00"
       },
       "sig": "megasena|2026-08-09 21:00:00"
+    },
+    {
+      "kind": "clock",
+      "tz_id": "America/Sao_Paulo",
+      "location_name": "São Paulo, São Paulo",
+      "format": "full",
+      "theme": "classic",
+      "custom_colors": [],
+      "utc_offset_minutes": -180,
+      "duration": 15,
+      "sig": "America/Sao_Paulo|full|classic|"
     }
   ]
 }
@@ -290,6 +301,23 @@ Campos de `result`:
 | `data_proximo_concurso` | string | data do próximo sorteio, formato `DD/MM/AAAA` |
 | `valor_estimado_proximo` | number \| null | estimativa de prêmio do próximo concurso, em reais |
 | `fetched_at` | string | timestamp UTC (`AAAA-MM-DD HH:MM:SS`) de quando esse resultado foi consultado — é o componente de `sig` que dispara o hot-reload quando sai um sorteio novo |
+
+**Item de relógio** (`kind: "clock"`) — mídia dinâmica, sem arquivo. Sem cache/cron: o backend de
+referência calcula `utc_offset_minutes` **na hora**, a cada request, com o fuso resolvido uma vez no
+cadastro do item (via geocoding). O cliente soma esse offset a `Date.now()` e "anda" o relógio
+sozinho, sem `Intl`/nome IANA — só números:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `kind` | `"clock"` | — |
+| `tz_id` | string | fuso IANA (ex.: `"America/Sao_Paulo"`) — informativo; o cliente não precisa interpretar o nome, só existe pra debug/consumidores que queiram usar `Intl` por conta própria |
+| `location_name` | string | nome da cidade escolhida, pra exibir acima do relógio (ex.: "São Paulo, São Paulo") |
+| `format` | `"full"` \| `"simple"` | `full` mostra "Quinta-Feira, 13 de Agosto de 2026" por extenso abaixo dos dígitos; `simple` mostra só "13/08/2026" |
+| `theme` | `"classic"` \| `"creative"` | `classic` é um estilo fixo (fundo escuro, dígitos verdes); `creative` usa `custom_colors` abaixo |
+| `custom_colors` | array de strings | só presente/relevante quando `theme = "creative"` — de 2 a 6 cores hex (`#RRGGBB`), mesmo mecanismo de `custom_colors` do clima |
+| `utc_offset_minutes` | number | offset atual do fuso em relação ao UTC, em MINUTOS (pode ser negativo) — já leva em conta horário de verão vigente NESTE INSTANTE; o player de referência faz `new Date(Date.now() + utc_offset_minutes*60000)` e lê os campos com `getUTC*()` pra montar a hora/data "de parede" do fuso, sem precisar saber o nome IANA |
+| `duration` | number | segundos em tela, mínimo 1 |
+| `sig` | string | identidade estável do conteúdo (`tz_id + format + theme + custom_colors`) — como este `kind` não tem `src`/`external_id` nem `fetched_at`, um consumidor próprio deve usar `sig` pra detectar "a config deste item mudou" (fuso/formato/tema editado no painel) no hot-reload; o relógio em si não precisa de hot-reload pra andar, ele já anda sozinho no cliente |
 
 ### Recomendações para quem implementar um backend compatível
 
