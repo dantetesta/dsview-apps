@@ -1,7 +1,7 @@
 {
   "name": "dsview",
   "productName": "DS View",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "App WebView kiosk offline para rodar playlists do DS View em TVs/mini-PCs Windows.",
   "author": "DS View",
   "license": "UNLICENSED",
