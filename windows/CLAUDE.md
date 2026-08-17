@@ -3,7 +3,7 @@
 App **kiosk offline** (Electron 31, Windows 10/11 x64). Uma casca full-screen sem barra de URL em volta do
 **player do plugin DS View**, com **cache local** que espelha o conteúdo online no disco — a TV segue tocando
 mesmo sem internet. Repo git compartilhado com o app Android (`dsview-apps/`, monorepo), separado do plugin,
-**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.5.8**; falta validar o instalador em Windows real.
+**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.5.9**; falta validar o instalador em Windows real.
 
 > Faz parte do guarda-chuva `Projetos/DSFácil/`. O produto é o plugin (`../ds-facil/`, tem o CLAUDE.md detalhado).
 > Este app **consome os endpoints públicos que já existem** no plugin — não exige nenhuma mudança nele.
@@ -103,7 +103,7 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
 
 ## Regras de domínio / gotchas (lições que voltam)
 
-1. **O player tem fonte única: o plugin.** `src/renderer/player.js|css` são **cópias gitignoradas**. Nunca editar aqui —
+1. **O player tem fonte única: o plugin.** `src/renderer/player.js|css|qrcode.js` são **cópias gitignoradas**. Nunca editar aqui —
    corrigir no plugin (`../../ds-facil/player/`) e rodar `npm run copy-player` (já embutido em `start`/`dist`).
    Player velho no app = você esqueceu de rodar o copy.
 2. **O truque `/state` + `/state/auth`.** O `player.js` faz `fetch(api)` e `fetch(api + '/auth')`. Por isso o `api`

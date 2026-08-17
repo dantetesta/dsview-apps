@@ -1,5 +1,5 @@
 /**
- * Copia o player (player.js/player.css) do plugin DS View para o renderer deste app.
+ * Copia o player (player.js/player.css/qrcode.js) do plugin DS View para o renderer deste app.
  * Fonte única = ../../ds-facil/player/. A cópia é gitignorada; nunca editar aqui.
  * Se o plugin não estiver ao lado (ex.: build isolado), avisa mas não quebra — o dev pode
  * colocar os arquivos manualmente em src/renderer/.
@@ -11,7 +11,7 @@ const path = require('path');
 const from = path.resolve(__dirname, '..', '..', '..', 'ds-facil', 'player');
 const to = path.resolve(__dirname, '..', 'src', 'renderer');
 
-const files = ['player.js', 'player.css'];
+const files = ['player.js', 'player.css', 'qrcode.js'];
 let ok = true;
 for (const f of files) {
   const src = path.join(from, f);

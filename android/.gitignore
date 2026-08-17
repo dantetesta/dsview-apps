@@ -11,6 +11,7 @@ captures/
 # Player copiado do plugin no build (fonte única = ../../ds-facil/player/). Nunca commitar a cópia.
 app/src/main/assets/player.js
 app/src/main/assets/player.css
+app/src/main/assets/qrcode.js
 
 # Keystore de assinatura de release — NUNCA commitar (repo público). Backup fora do git é
 # responsabilidade de quem assina os builds; perder isto impede atualizar o app instalado.

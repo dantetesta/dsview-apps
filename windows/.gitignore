@@ -7,3 +7,4 @@ out/
 # Player copiado do plugin no build (fonte única = ../../ds-facil/player/). Nunca commitar a cópia.
 src/renderer/player.js
 src/renderer/player.css
+src/renderer/qrcode.js

@@ -20,8 +20,8 @@ android {
         applicationId = "com.dsview.player"
         minSdk = 21          // Android 5.0 — cobre TV boxes e Android TV antigos.
         targetSdk = 34
-        versionCode = 26
-        versionName = "0.7.0"
+        versionCode = 27
+        versionName = "0.7.1"
     }
 
     signingConfigs {
@@ -52,10 +52,10 @@ android {
     }
 }
 
-// Player single-source: copia player.js/player.css do plugin (../../ds-facil/player) para os assets no build.
+// Player single-source: copia player.js/player.css/qrcode.js do plugin (../../ds-facil/player) para os assets no build.
 // A cópia é gitignorada; nunca editar em app/src/main/assets — corrigir no plugin e rebuildar.
 val copyPlayer by tasks.registering(Copy::class) {
-    from("$rootDir/../../ds-facil/player") { include("player.js", "player.css") }
+    from("$rootDir/../../ds-facil/player") { include("player.js", "player.css", "qrcode.js") }
     into("$projectDir/src/main/assets")
     // O player vem do plugin com o cabeçalho da marca de origem. Este app é white-label, então
     // toda linha de comentário de bloco vira vazia na cópia — regra SEM ESTADO de propósito: o

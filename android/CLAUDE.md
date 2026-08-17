@@ -2,7 +2,7 @@
 
 App **kiosk offline Android** (Kotlin + WebView), irmão do `../dsview` (Windows/Electron). Roda em
 **qualquer Android** incluindo **Android TV**. Mesma arquitetura **cache-proxy**: servidor local espelha a API do
-player, loop de sync espelha a mídia no disco. **v0.7.0** (versionCode 26).
+player, loop de sync espelha a mídia no disco. **v0.7.1** (versionCode 27).
 Repo git compartilhado com o app Windows (`dsview-apps/`, monorepo), **PÚBLICO** (`github.com/dantetesta/dsview-apps`)
 — é justamente por ser público que o `player.js` copiado tem a marca removida (ver Gotchas de build). Faz parte do
 guarda-chuva `Projetos/DSFácil/`.
@@ -38,7 +38,7 @@ do usuário pra instalar** — nenhum app consegue se auto-atualizar em silênci
 isto só poupa o caminho manual. Espelha `updater.js` do app Windows.
 
 ## Regras de domínio / gotchas
-1. **Player é single-source do plugin.** `assets/player.js|css` são **cópias gitignoradas** — a task Gradle `copyPlayer`
+1. **Player é single-source do plugin.** `assets/player.js|css|qrcode.js` são **cópias gitignoradas** — a task Gradle `copyPlayer`
    copia de `../../ds-facil/player/` no build. Nunca editar aqui; corrigir no plugin e rebuildar. `setup.*` e `player.html`
    são do app (fetch nos `/dsf/…`), não vêm do plugin.
 2. **Tudo passa pelo servidor local** (127.0.0.1:{porta aleatória}). O WebView carrega `/setup` ou
