@@ -36,7 +36,12 @@ class App : Application() {
             config = Config(this)
             cache = MediaCache(this)
             state = StateStore(this)
-            syncer = Syncer(config, cache, state)
+            val version = try {
+                packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+            } catch (e: Exception) {
+                ""
+            }
+            syncer = Syncer(config, cache, state, version)
             server = LocalServer(this, config, cache, state, syncer)
             startupError = startServer()
             if (startupError == null) syncer.start()
@@ -106,6 +111,11 @@ class App : Application() {
     } catch (e: Exception) { null }
 
     fun clearCrash() { try { crashFile().delete() } catch (e: Exception) {} }
+
+    /** Repassa saúde ao heartbeat somente se o Syncer chegou a ser inicializado. */
+    fun reportHealth(health: String, error: String = "") {
+        if (::syncer.isInitialized) syncer.setHealth(health, error)
+    }
 
     private fun describe(e: Throwable?): String =
         if (e == null) "motivo desconhecido" else (e.javaClass.simpleName + ": " + (e.message ?: ""))

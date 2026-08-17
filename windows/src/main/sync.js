@@ -9,17 +9,31 @@ const { net } = require('electron');
 const config = require('./config');
 const cache = require('./cache');
 const state = require('./state');
+const appVersion = require('../../package.json').version;
 
 let timer = null;
+let heartbeatTimer = null;
 let running = false;
 let onStatus = () => {};
+let lastSyncAt = '';
+let healthOverride = '';
+let healthError = '';
+
+const HEARTBEAT_MS = 60000;
 
 /** URLs de mídia cacheáveis do payload (imagem e vídeo próprio; YouTube/Vimeo não). */
 function cacheableUrls(payload) {
   const out = [];
+  const seen = new Set();
   for (const it of (payload && payload.queue) || []) {
     if (it.provider === 'youtube' || it.provider === 'vimeo') continue;
-    if (it.src && /^https?:\/\//i.test(it.src)) out.push(it.src);
+    for (const key of ['src', 'fallback_src', 'source_logo']) {
+      const url = it[key];
+      if (url && /^https?:\/\//i.test(url) && !seen.has(url)) {
+        seen.add(url);
+        out.push(url);
+      }
+    }
   }
   return out;
 }
@@ -68,7 +82,7 @@ async function authenticate(password) {
   if (!api) return { status: 'not-configured' };
   let res;
   try {
-    res = await postJson(api + '/auth', { password: password || '' });
+    res = await postJson(api + '/auth', { password: password || '', ...telemetry(cfg) });
   } catch (e) {
     const lg = state.get();
     return (cfg.device && lg) ? { status: 'ok' } : { status: 'offline' }; // sem rede: vale o device+cache já salvos.
@@ -102,6 +116,7 @@ async function syncOnce() {
   }
 
   const payload = res.payload;
+  lastSyncAt = new Date().toISOString();
   const prev = state.get();
   if (prev && prev.version && prev.version === payload.version) {
     return { ok: true, changed: false }; // nada mudou.
@@ -125,6 +140,39 @@ async function syncOnce() {
   return { ok: true, changed: true, downloaded, removed, total: urls.length };
 }
 
+/** Fotografia pequena enviada ao monitoramento; nunca inclui URL, senha ou conteúdo da playlist. */
+function telemetry(cfg) {
+  cfg = cfg || config.read();
+  const health = healthOverride || 'healthy';
+  return {
+    platform: 'windows',
+    app_version: appVersion,
+    mode: cfg.offline === false ? 'online' : 'offline_cache',
+    health,
+    last_error: health === 'degraded' ? healthError : '',
+    last_sync_at: lastSyncAt,
+  };
+}
+
+/** Heartbeat independente do download de mídia. Falha de rede é esperada e nunca derruba o kiosk. */
+async function heartbeatOnce() {
+  const cfg = config.read();
+  const api = config.realApi(cfg);
+  if (!api || !cfg.device) return { ok: false, reason: 'not-authenticated' };
+  try {
+    const res = await postJson(api + '/heartbeat', { device: cfg.device, ...telemetry(cfg) });
+    return { ok: !!(res && res.status === 'ok') };
+  } catch (e) {
+    return { ok: false, reason: 'offline' };
+  }
+}
+
+/** Main process informa travamento/recuperação do renderizador. */
+function setHealth(health, error) {
+  healthOverride = health === 'degraded' ? 'degraded' : '';
+  healthError = healthOverride ? String(error || 'Player com problema').slice(0, 255) : '';
+}
+
 async function tick() {
   if (running) return;
   running = true;
@@ -142,6 +190,9 @@ function start(statusCb) {
   onStatus = statusCb || (() => {});
   schedule();
   tick(); // primeira passada imediata (respeita offline/not-configured lá dentro).
+  heartbeatOnce().catch(() => {});
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  heartbeatTimer = setInterval(() => heartbeatOnce().catch(() => {}), HEARTBEAT_MS);
 }
 
 /** Reaplica o intervalo depois que o usuário o altera no setup. */
@@ -149,6 +200,7 @@ function restart() { schedule(); }
 
 function stop() {
   if (timer) { clearInterval(timer); timer = null; }
+  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
 }
 
-module.exports = { start, stop, restart, syncOnce, authenticate, cacheableUrls };
+module.exports = { start, stop, restart, syncOnce, authenticate, heartbeatOnce, telemetry, setHealth, cacheableUrls, HEARTBEAT_MS };

@@ -151,9 +151,11 @@ class LocalServer(
             val it = queue.optJSONObject(i) ?: continue
             val provider = it.optString("provider")
             if (provider == "youtube" || provider == "vimeo") continue
-            val src = it.optString("src")
-            if (src.isNotEmpty() && cache.has(src)) {
-                it.put("src", "http://127.0.0.1:$listeningPort/media/" + cache.fileName(src))
+            for (key in listOf("src", "fallback_src", "source_logo")) {
+                val url = it.optString(key)
+                if (url.isNotEmpty() && cache.has(url)) {
+                    it.put(key, "http://127.0.0.1:$listeningPort/media/" + cache.fileName(url))
+                }
             }
         }
         return copy

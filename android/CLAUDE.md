@@ -2,9 +2,7 @@
 
 App **kiosk offline Android** (Kotlin + WebView), irmão do `../dsview` (Windows/Electron). Roda em
 **qualquer Android** incluindo **Android TV**. Mesma arquitetura **cache-proxy**: servidor local espelha a API do
-player, loop de sync espelha a mídia no disco. **v0.4.0** (a v0.2.0 abaixo foi o release de compatibilidade/
-diagnóstico de 28/07/2026, depois de o cliente relatar "instala mas não abre" num TV box Android 10; a lógica
-descrita continua valendo, só o número do topo estava parado).
+player, loop de sync espelha a mídia no disco. **v0.7.0** (versionCode 26).
 Repo git compartilhado com o app Windows (`dsview-apps/`, monorepo), **PÚBLICO** (`github.com/dantetesta/dsview-apps`)
 — é justamente por ser público que o `player.js` copiado tem a marca removida (ver Gotchas de build). Faz parte do
 guarda-chuva `Projetos/DSFácil/`.
@@ -26,6 +24,11 @@ binário agora, não dois projetos em paralelo. Ícone/banner/logo em uso vêm d
 `version`, authenticate, loop de intervalo) · `MediaCache` (=cache.js: `filesDir/media`, sha1+ext, download atômico,
 prune/clear) · `Config` (SharedPreferences) · `StateStore` (last-good.json) · `Resolver` (=resolve.js) ·
 `MainActivity` (WebView kiosk; menu no Voltar/Menu) · `BootReceiver` (auto-start) · `Updater` (auto-update).
+
+`Syncer` também envia heartbeat independente a cada 60 s. A autenticação e o heartbeat informam ao plugin
+plataforma/versão, modo online ou cache offline, saúde do WebView e data da última sincronização. Morte do
+renderizador/tela de erro marca `degraded`; voltar ao player marca `healthy`. A telemetria não leva URL, senha
+nem conteúdo da playlist e uma falha de rede nunca interrompe o kiosk.
 
 `Updater` — auto-update via GitHub Releases (repo público `dsview-apps`, "latest"). Extrai a versão do
 **nome do asset** (`dsview-android-X.Y.Z.apk`), não da tag do release. `checkLatest()` compara com o
@@ -104,7 +107,7 @@ O APK sempre esteve tecnicamente compatível (`minSdk 21`, `targetSdk 34`, sem l
 
 ## Backlog aberto
 - Testar em **Android real + Android TV** (kiosk, auto-start no boot, offline, só-online).
-- **Assinatura de release** (`assembleRelease` sai não assinado) — único item de empacotamento ainda aberto.
+- Validar instalação/atualização do APK assinado em Android real e Android TV.
 - DPAD no setup já tem base (`isFocusable`+`tabIndex=0`+`onkeydown` Enter em `setup.js`); falta só validar em TV real.
 - Considerar `WorkManager`/foreground service pra o sync sobreviver melhor em background em Androids restritivos.
 

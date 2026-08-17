@@ -4,6 +4,10 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 /**
  * Loop de sincronização: o coração do modo offline. Espelha o sync.js do app Windows.
@@ -14,6 +18,7 @@ class Syncer(
     private val config: Config,
     private val cache: MediaCache,
     private val state: StateStore,
+    private val appVersion: String,
 ) {
     /** Último status (para o preloader do setup consultar via /dsf/sync-status). */
     @Volatile var lastStatus: JSONObject = JSONObject().put("phase", "idle")
@@ -22,20 +27,26 @@ class Syncer(
     @Volatile private var running = false
     @Volatile private var stopFlag = false
     private var thread: Thread? = null
+    private var heartbeatThread: Thread? = null
+    @Volatile private var lastSyncAt = ""
+    @Volatile private var healthOverride = ""
+    @Volatile private var healthError = ""
 
     private fun status(s: JSONObject) { lastStatus = s }
 
     fun cacheableUrls(payload: JSONObject?): List<String> {
-        val out = ArrayList<String>()
-        val queue = payload?.optJSONArray("queue") ?: return out
+        val out = LinkedHashSet<String>()
+        val queue = payload?.optJSONArray("queue") ?: return out.toList()
         for (i in 0 until queue.length()) {
             val it = queue.optJSONObject(i) ?: continue
             val provider = it.optString("provider")
             if (provider == "youtube" || provider == "vimeo") continue
-            val src = it.optString("src")
-            if (src.startsWith("http", ignoreCase = true)) out.add(src)
+            for (key in listOf("src", "fallback_src", "source_logo")) {
+                val url = it.optString(key)
+                if (url.startsWith("http", ignoreCase = true)) out.add(url)
+            }
         }
-        return out
+        return out.toList()
     }
 
     /** Uma passada de sincronização. Não lança; devolve um resumo. */
@@ -54,6 +65,7 @@ class Syncer(
             return result(false, res.optString("status", "no-payload"))
         }
         val payload = res.getJSONObject("payload")
+        lastSyncAt = isoNow()
         val prev = state.get()
         if (prev != null && prev.optString("version").isNotEmpty() &&
             prev.optString("version") == payload.optString("version")
@@ -81,7 +93,7 @@ class Syncer(
     fun authenticate(password: String): JSONObject {
         val api = config.realApi() ?: return JSONObject().put("status", "not-configured")
         val res: JSONObject = try {
-            postJson(api + "/auth", JSONObject().put("password", password))
+            postJson(api + "/auth", telemetry().put("password", password))
         } catch (e: Exception) {
             val lg = state.get()
             return if (config.device.isNotEmpty() && lg != null)
@@ -112,6 +124,13 @@ class Syncer(
                 tick()
             }
         }.apply { isDaemon = true; name = "dsf-sync"; start() }
+        heartbeatThread = Thread {
+            heartbeatOnce()
+            while (!stopFlag) {
+                try { Thread.sleep(HEARTBEAT_MS) } catch (e: InterruptedException) { break }
+                if (!stopFlag) heartbeatOnce()
+            }
+        }.apply { isDaemon = true; name = "dsf-heartbeat"; start() }
     }
 
     private fun tick() {
@@ -127,6 +146,7 @@ class Syncer(
     fun stop() {
         stopFlag = true
         thread?.interrupt()
+        heartbeatThread?.interrupt()
         // `interrupt()` não acorda uma thread bloqueada em I/O de socket (só Thread.sleep) — sem
         // esperar ela sair de verdade, `restart()` (stop+start) largava uma thread órfã ainda
         // rodando com `running=true`, e a thread NOVA via essa flag "true" (é a mesma instância de
@@ -134,12 +154,48 @@ class Syncer(
         // de trocar o intervalo. O join espera a antiga realmente terminar (limitado pelos timeouts
         // de conexão/leitura abaixo) antes de deixar uma nova começar.
         try { thread?.join(35_000) } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
+        try { heartbeatThread?.join(5_000) } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
         thread = null
+        heartbeatThread = null
         running = false // trava de segurança: se o join estourou o prazo, libera mesmo assim.
+    }
+
+    /** MainActivity informa falha/recuperação do WebView sem acoplar rede à UI. */
+    fun setHealth(health: String, error: String = "") {
+        healthOverride = if (health == "degraded") "degraded" else ""
+        healthError = if (healthOverride.isNotEmpty()) error.take(255) else ""
+    }
+
+    /** Fotografia pequena, sem URL, senha ou conteúdo da playlist. */
+    internal fun telemetry(): JSONObject {
+        val health = if (healthOverride.isNotEmpty()) healthOverride else "healthy"
+        return JSONObject()
+            .put("platform", "android")
+            .put("app_version", appVersion)
+            .put("mode", if (config.offline) "offline_cache" else "online")
+            .put("health", health)
+            .put("last_error", if (health == "degraded") healthError else "")
+            .put("last_sync_at", lastSyncAt)
+    }
+
+    /** Heartbeat independente da sincronização. Falhar sem internet é esperado e silencioso. */
+    internal fun heartbeatOnce(): JSONObject {
+        val api = config.realApi() ?: return result(false, "not-configured")
+        if (config.device.isEmpty()) return result(false, "not-authenticated")
+        return try {
+            val res = postJson(api + "/heartbeat", telemetry().put("device", config.device))
+            JSONObject().put("ok", res.optString("status") == "ok")
+        } catch (e: Exception) {
+            result(false, "offline")
+        }
     }
 
     private fun result(ok: Boolean, reason: String) = JSONObject().put("ok", ok).put("reason", reason)
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
+
+    private fun isoNow(): String = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }.format(Date())
 
     private fun fetchJson(url: String): JSONObject {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
@@ -178,6 +234,7 @@ class Syncer(
 // mal configurado devolvendo uma resposta gigante estoura a memória com OutOfMemoryError, que
 // (sendo Error, não Exception) escapa de todo catch (e: Exception) por aqui e derruba o app inteiro.
 internal const val MAX_RESPONSE_BYTES = 5 * 1024 * 1024 // 5 MB — folga generosa sobre o que uma playlist real usa.
+internal const val HEARTBEAT_MS = 60_000L
 
 internal fun readLimited(stream: java.io.InputStream, maxBytes: Int = MAX_RESPONSE_BYTES): String {
     val buffer = java.io.ByteArrayOutputStream()

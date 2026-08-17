@@ -29,8 +29,10 @@ function rewrite(payload) {
   const copy = JSON.parse(JSON.stringify(payload));
   for (const it of copy.queue || []) {
     if (it.provider === 'youtube' || it.provider === 'vimeo') continue;
-    if (it.src && cache.has(it.src)) {
-      it.src = 'http://127.0.0.1:' + port + '/media/' + cache.fileName(it.src);
+    for (const key of ['src', 'fallback_src', 'source_logo']) {
+      if (it[key] && cache.has(it[key])) {
+        it[key] = 'http://127.0.0.1:' + port + '/media/' + cache.fileName(it[key]);
+      }
     }
   }
   return copy;

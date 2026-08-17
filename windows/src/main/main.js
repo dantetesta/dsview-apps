@@ -87,11 +87,18 @@ function createWindow() {
   // mas sem imagem nenhuma, e ninguém percebe até reclamarem. Recarrega o que já estava carregado.
   win.webContents.on('render-process-gone', (_e, details) => {
     if (details.reason === 'clean-exit') return;
+    sync.setHealth('degraded', 'O renderizador do player foi reiniciado após uma falha.');
     reviveAfterCrash();
   });
   win.webContents.on('unresponsive', () => {
+    sync.setHealth('degraded', 'O player parou de responder e entrou em recuperação.');
     // Dá um tempo pra travamento passageiro (ex.: decode pesado) antes de forçar a recriação.
     setTimeout(() => { if (win && !win.isDestroyed() && win.webContents.isWaitingForResponse()) reviveAfterCrash(); }, 15000);
+  });
+  win.webContents.on('did-finish-load', () => {
+    const url = win && !win.isDestroyed() ? win.webContents.getURL() : '';
+    const playing = /\/player\.html(?:\?|$)/.test(url) || /\/play\/[A-Za-z0-9]+\/?(?:\?|$)/.test(url);
+    sync.setHealth(playing ? 'healthy' : 'degraded', playing ? '' : 'O aplicativo está nas configurações; a playlist não está em exibição.');
   });
 
   // Bloqueia navegação para fora e novas janelas (kiosk fechado).
@@ -386,7 +393,11 @@ if (!gotLock) {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try { port = await server.start(); break; }
       catch (err) {
-        if (attempt === 3) { console.error('Servidor local não subiu depois de 3 tentativas:', err); port = 0; }
+        if (attempt === 3) {
+          console.error('Servidor local não subiu depois de 3 tentativas:', err);
+          sync.setHealth('degraded', 'O servidor local do modo offline não iniciou.');
+          port = 0;
+        }
         else await new Promise((r) => setTimeout(r, 500));
       }
     }
@@ -399,6 +410,6 @@ if (!gotLock) {
     createWindow();
   });
 
-  app.on('will-quit', () => globalShortcut.unregisterAll());
+  app.on('will-quit', () => { sync.stop(); globalShortcut.unregisterAll(); });
   app.on('window-all-closed', () => app.quit());
 }

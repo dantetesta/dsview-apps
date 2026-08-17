@@ -2,7 +2,8 @@
 require('./_stub-electron');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { MEDIA_NAME_RE } = require('../src/main/server');
+const cache = require('../src/main/cache');
+const { MEDIA_NAME_RE, rewrite } = require('../src/main/server');
 
 test('MEDIA_NAME_RE: aceita um nome de cache válido de verdade', () => {
   assert.match('da39a3ee5e6b4b0d3255bfef95601890afd80709.mp4', MEDIA_NAME_RE);
@@ -38,4 +39,20 @@ test('MEDIA_NAME_RE: barra nome sem extensão', () => {
 
 test('MEDIA_NAME_RE: barra null byte / caracteres de controle', () => {
   assert.equal(MEDIA_NAME_RE.test('da39a3ee5e6b4b0d3255bfef95601890afd80709.mp4\0.txt'), false);
+});
+
+test('rewrite: aponta foto e logo RSS cacheados para o servidor local', () => {
+  const originalHas = cache.has;
+  const originalFileName = cache.fileName;
+  cache.has = () => true;
+  cache.fileName = (url) => url.includes('logo') ? 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.webp' : 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.webp';
+  try {
+    const payload = rewrite({ queue: [{ kind: 'rss', src: 'https://site/foto.webp', fallback_src: 'https://site/logo.webp', source_logo: 'https://site/logo.webp' }] });
+    assert.match(payload.queue[0].src, /\/media\/a{40}\.webp$/);
+    assert.match(payload.queue[0].fallback_src, /\/media\/b{40}\.webp$/);
+    assert.match(payload.queue[0].source_logo, /\/media\/b{40}\.webp$/);
+  } finally {
+    cache.has = originalHas;
+    cache.fileName = originalFileName;
+  }
 });

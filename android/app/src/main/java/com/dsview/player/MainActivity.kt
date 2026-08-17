@@ -129,6 +129,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
         w.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                val playing = url?.contains("/player?") == true ||
+                    Regex("/play/[A-Za-z0-9]+/?(?:\\?|$)").containsMatchIn(url ?: "")
+                app.reportHealth(
+                    if (playing) "healthy" else "degraded",
+                    if (playing) "" else "O aplicativo está nas configurações; a playlist não está em exibição.",
+                )
+            }
+
             @Deprecated("Deprecated in Java")
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                 if (url == null) return false
@@ -146,6 +156,7 @@ class MainActivity : AppCompatActivity() {
             @TargetApi(Build.VERSION_CODES.O)
             override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
                 app.logJs("render process morreu (crash=" + (detail?.didCrash() ?: false) + ") — recriando")
+                app.reportHealth("degraded", "O renderizador do player foi reiniciado após uma falha.")
                 recoverFromRendererDeath()
                 return true
             }
@@ -214,6 +225,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Tela preta com o motivo escrito. Substitui o "não abre / tela preta muda". */
     private fun showError(message: String) {
+        app.reportHealth("degraded", message.take(255))
         val text = TextView(this).apply {
             setTextColor(Color.WHITE)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)

@@ -4,6 +4,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
 const cache = require('../src/main/cache');
+const config = require('../src/main/config');
+const { cacheableUrls, telemetry, setHealth, HEARTBEAT_MS } = require('../src/main/sync');
 
 function sha1(s) { return crypto.createHash('sha1').update(s).digest('hex'); }
 
@@ -42,4 +44,32 @@ test('fileName: resultado sempre bate com o formato que o servidor local aceita 
 
 test('has: arquivo inexistente devolve false sem lançar', () => {
   assert.equal(cache.has('https://site.com/nunca-baixado.mp4'), false);
+});
+
+test('cacheableUrls: inclui foto e logo do RSS uma vez para funcionar offline', () => {
+  const photo = 'https://site.com/noticia.webp';
+  const logo = 'https://site.com/logo.webp';
+  const urls = cacheableUrls({ queue: [
+    { kind: 'rss', provider: 'self', src: photo, fallback_src: logo, source_logo: logo },
+    { kind: 'rss', provider: 'self', src: photo, source_logo: logo },
+  ] });
+  assert.deepEqual(urls, [photo, logo]);
+});
+
+test('telemetry: identifica Windows, versão e modo sem vazar dados da playlist', () => {
+  const online = telemetry({ offline: false, origin: 'https://segredo.test', token: 'nao-vazar' });
+  assert.equal(online.platform, 'windows');
+  assert.equal(online.app_version, require('../package.json').version);
+  assert.equal(online.mode, 'online');
+  assert.equal(online.health, 'healthy');
+  assert.equal(online.origin, undefined);
+  assert.equal(online.token, undefined);
+
+  setHealth('degraded', 'Renderizador travou');
+  const degraded = telemetry({ offline: true });
+  assert.equal(degraded.mode, 'offline_cache');
+  assert.equal(degraded.health, 'degraded');
+  assert.equal(degraded.last_error, 'Renderizador travou');
+  setHealth('healthy');
+  assert.equal(HEARTBEAT_MS, 60000);
 });
