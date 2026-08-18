@@ -8,6 +8,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import kotlin.random.Random
 
 /**
  * Loop de sincronização: o coração do modo offline. Espelha o sync.js do app Windows.
@@ -127,7 +128,8 @@ class Syncer(
         heartbeatThread = Thread {
             heartbeatOnce()
             while (!stopFlag) {
-                try { Thread.sleep(HEARTBEAT_MS) } catch (e: InterruptedException) { break }
+                val waitMs = heartbeatDelay(Random.nextDouble())
+                try { Thread.sleep(waitMs) } catch (e: InterruptedException) { break }
                 if (!stopFlag) heartbeatOnce()
             }
         }.apply { isDaemon = true; name = "dsf-heartbeat"; start() }
@@ -235,6 +237,10 @@ class Syncer(
 // (sendo Error, não Exception) escapa de todo catch (e: Exception) por aqui e derruba o app inteiro.
 internal const val MAX_RESPONSE_BYTES = 5 * 1024 * 1024 // 5 MB — folga generosa sobre o que uma playlist real usa.
 internal const val HEARTBEAT_MS = 60_000L
+internal const val HEARTBEAT_JITTER_MS = 15_000L
+
+internal fun heartbeatDelay(randomUnit: Double): Long =
+    HEARTBEAT_MS + (randomUnit.coerceIn(0.0, 1.0) * HEARTBEAT_JITTER_MS).toLong()
 
 internal fun readLimited(stream: java.io.InputStream, maxBytes: Int = MAX_RESPONSE_BYTES): String {
     val buffer = java.io.ByteArrayOutputStream()

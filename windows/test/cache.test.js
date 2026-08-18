@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const crypto = require('crypto');
 const cache = require('../src/main/cache');
 const config = require('../src/main/config');
-const { cacheableUrls, telemetry, setHealth, HEARTBEAT_MS } = require('../src/main/sync');
+const { cacheableUrls, telemetry, setHealth, heartbeatDelay, HEARTBEAT_MS, HEARTBEAT_JITTER_MS } = require('../src/main/sync');
 
 function sha1(s) { return crypto.createHash('sha1').update(s).digest('hex'); }
 
@@ -72,4 +72,10 @@ test('telemetry: identifica Windows, versão e modo sem vazar dados da playlist'
   assert.equal(degraded.last_error, 'Renderizador travou');
   setHealth('healthy');
   assert.equal(HEARTBEAT_MS, 60000);
+});
+
+test('heartbeat: jitter espalha os aparelhos sem passar de 75 segundos', () => {
+  assert.equal(heartbeatDelay(0), HEARTBEAT_MS);
+  assert.equal(heartbeatDelay(1), HEARTBEAT_MS + HEARTBEAT_JITTER_MS);
+  assert.equal(heartbeatDelay(0.5), 67500);
 });

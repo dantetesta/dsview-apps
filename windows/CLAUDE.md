@@ -3,7 +3,7 @@
 App **kiosk offline** (Electron 31, Windows 10/11 x64). Uma casca full-screen sem barra de URL em volta do
 **player do plugin DS View**, com **cache local** que espelha o conteúdo online no disco — a TV segue tocando
 mesmo sem internet. Repo git compartilhado com o app Android (`dsview-apps/`, monorepo), separado do plugin,
-**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.5.9**; falta validar o instalador em Windows real.
+**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.6.0**; falta validar o instalador em Windows real.
 
 > Faz parte do guarda-chuva `Projetos/DSFácil/`. O produto é o plugin (`../ds-facil/`, tem o CLAUDE.md detalhado).
 > Este app **consome os endpoints públicos que já existem** no plugin — não exige nenhuma mudança nele.
@@ -44,9 +44,10 @@ binário agora. Ícone/logo em uso vêm da marca DS View oficial (`src/renderer/
   depois no mesmo boot — bug real corrigido em 0.4.2 (a versão anterior suprimia até reiniciar o Windows, então
   "Sair" e depois tentar abrir de novo na mão deixava o app "morto" até reboot).
 - **Anti-sleep** (tela não apaga). **Single-instance**.
-- **Monitoramento:** heartbeat independente a cada 60 s informa versão, modo online/cache offline, saúde do
+- **Monitoramento:** heartbeat independente a cada 60–75 s informa versão, modo online/cache offline, saúde do
   renderizador e última sincronização. Crash ou janela sem resposta marca `degraded`; recuperar o player marca
-  `healthy`. Falha de rede é silenciosa e não derruba a reprodução local.
+  `healthy`. O jitter de até 15 s evita que muitos aparelhos ligados juntos atinjam o servidor no mesmo segundo.
+  Falha de rede é silenciosa e não derruba a reprodução local.
 
 ## Arquitetura (cache-proxy + webview)
 
@@ -70,7 +71,7 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
 | `src/main/state.js` | "Última versão boa" do payload — o **original, sem reescrita de URL** — em `userData/last-good.json` + memoizado. É o que permite abrir offline depois de um reboot. |
 | `src/main/server.js` | Servidor local `127.0.0.1:0` (porta alta aleatória). Imita a forma da API do player. `rewrite()` troca o `src` das mídias **cacheadas** por `/media/{hash}` (YouTube/Vimeo ficam intactos). |
 | `src/main/cache.js` | Espelho de mídia no disco (`userData/media/`). Nome = `sha1(url)+ext` (determinístico, sem manifesto). Download **atômico** (`.part`→`rename`). `prune()` apaga o que saiu do payload; `clear()` apaga tudo (reset do cache). |
-| `src/main/sync.js` | O coração do offline. `syncOnce()`: busca o payload real; se `version` mudou, baixa mídia nova, **depois** grava last-good e poda. No modo só-online retorna `online-only` sem baixar. Loop com intervalo de `config.syncIntervalMin()`, `restart()` reagenda ao trocar o intervalo, **nunca lança**. Também mantém o heartbeat de 60 s separado do intervalo de download. |
+| `src/main/sync.js` | O coração do offline. `syncOnce()`: busca o payload real; se `version` mudou, baixa mídia nova, **depois** grava last-good e poda. No modo só-online retorna `online-only` sem baixar. Loop com intervalo de `config.syncIntervalMin()`, `restart()` reagenda ao trocar o intervalo, **nunca lança**. Também mantém o heartbeat de 60–75 s separado do intervalo de download. |
 | `src/main/resolve.js` | Resolve o que o usuário cola → `{origin, token}`. Aceita link `/play/{token}`, código curto (segue o 302 até o `/play/`), ou código + origin conhecido. Usa o `net` do Electron (respeita proxy do SO). |
 | `src/preload.js` | Bridge segura. Expõe **só** `window.dsf.*` ao renderer (nada de Node solto). |
 | `src/renderer/setup.*` | Tela de configuração: cola URL → `resolveSave` → `favAdd` → `authenticate(senha)` (dispara `syncOnce()` por dentro) → `play`. Favoritos, toggle de auto-start. `syncNow`/IPC `sync:now` existe no preload mas hoje não é chamado por nenhuma UI (código morto). |

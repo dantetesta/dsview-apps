@@ -20,6 +20,12 @@ let healthOverride = '';
 let healthError = '';
 
 const HEARTBEAT_MS = 60000;
+const HEARTBEAT_JITTER_MS = 15000;
+
+/** Espalha aparelhos que ligaram juntos para não criar um pico de requisições a cada minuto. */
+function heartbeatDelay(random = Math.random()) {
+  return HEARTBEAT_MS + Math.floor(Math.max(0, Math.min(1, random)) * HEARTBEAT_JITTER_MS);
+}
 
 /** URLs de mídia cacheáveis do payload (imagem e vídeo próprio; YouTube/Vimeo não). */
 function cacheableUrls(payload) {
@@ -186,13 +192,23 @@ function schedule() {
   timer = setInterval(tick, config.syncIntervalMin() * 60000);
 }
 
+function scheduleHeartbeat() {
+  if (heartbeatTimer) clearTimeout(heartbeatTimer);
+  const beat = () => {
+    heartbeatTimer = setTimeout(async () => {
+      await heartbeatOnce().catch(() => {});
+      if (heartbeatTimer !== null) beat();
+    }, heartbeatDelay());
+  };
+  beat();
+}
+
 function start(statusCb) {
   onStatus = statusCb || (() => {});
   schedule();
   tick(); // primeira passada imediata (respeita offline/not-configured lá dentro).
   heartbeatOnce().catch(() => {});
-  if (heartbeatTimer) clearInterval(heartbeatTimer);
-  heartbeatTimer = setInterval(() => heartbeatOnce().catch(() => {}), HEARTBEAT_MS);
+  scheduleHeartbeat();
 }
 
 /** Reaplica o intervalo depois que o usuário o altera no setup. */
@@ -200,7 +216,7 @@ function restart() { schedule(); }
 
 function stop() {
   if (timer) { clearInterval(timer); timer = null; }
-  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  if (heartbeatTimer) { clearTimeout(heartbeatTimer); heartbeatTimer = null; }
 }
 
-module.exports = { start, stop, restart, syncOnce, authenticate, heartbeatOnce, telemetry, setHealth, cacheableUrls, HEARTBEAT_MS };
+module.exports = { start, stop, restart, syncOnce, authenticate, heartbeatOnce, telemetry, setHealth, cacheableUrls, heartbeatDelay, HEARTBEAT_MS, HEARTBEAT_JITTER_MS };

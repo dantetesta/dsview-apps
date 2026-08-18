@@ -2,7 +2,7 @@
 
 App **kiosk offline Android** (Kotlin + WebView), irmão do `../dsview` (Windows/Electron). Roda em
 **qualquer Android** incluindo **Android TV**. Mesma arquitetura **cache-proxy**: servidor local espelha a API do
-player, loop de sync espelha a mídia no disco. **v0.7.1** (versionCode 27).
+player, loop de sync espelha a mídia no disco. **v0.7.2** (versionCode 28).
 Repo git compartilhado com o app Windows (`dsview-apps/`, monorepo), **PÚBLICO** (`github.com/dantetesta/dsview-apps`)
 — é justamente por ser público que o `player.js` copiado tem a marca removida (ver Gotchas de build). Faz parte do
 guarda-chuva `Projetos/DSFácil/`.
@@ -25,7 +25,8 @@ binário agora, não dois projetos em paralelo. Ícone/banner/logo em uso vêm d
 prune/clear) · `Config` (SharedPreferences) · `StateStore` (last-good.json) · `Resolver` (=resolve.js) ·
 `MainActivity` (WebView kiosk; menu no Voltar/Menu) · `BootReceiver` (auto-start) · `Updater` (auto-update).
 
-`Syncer` também envia heartbeat independente a cada 60 s. A autenticação e o heartbeat informam ao plugin
+`Syncer` também envia heartbeat independente a cada 60–75 s, com jitter para aparelhos que ligaram juntos não
+atingirem o servidor no mesmo segundo. A autenticação e o heartbeat informam ao plugin
 plataforma/versão, modo online ou cache offline, saúde do WebView e data da última sincronização. Morte do
 renderizador/tela de erro marca `degraded`; voltar ao player marca `healthy`. A telemetria não leva URL, senha
 nem conteúdo da playlist e uma falha de rede nunca interrompe o kiosk.
