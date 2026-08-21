@@ -2,7 +2,7 @@
 
 App **kiosk offline Android** (Kotlin + WebView), irmão do `../dsview` (Windows/Electron). Roda em
 **qualquer Android** incluindo **Android TV**. Mesma arquitetura **cache-proxy**: servidor local espelha a API do
-player, loop de sync espelha a mídia no disco. **v0.7.2** (versionCode 28).
+player, loop de sync espelha a mídia no disco. **v0.7.3** (versionCode 29).
 Repo git compartilhado com o app Windows (`dsview-apps/`, monorepo), **PÚBLICO** (`github.com/dantetesta/dsview-apps`)
 — é justamente por ser público que o `player.js` copiado tem a marca removida (ver Gotchas de build). Faz parte do
 guarda-chuva `Projetos/DSFácil/`.

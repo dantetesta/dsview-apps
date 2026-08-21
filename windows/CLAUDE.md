@@ -3,7 +3,7 @@
 App **kiosk offline** (Electron 31, Windows 10/11 x64). Uma casca full-screen sem barra de URL em volta do
 **player do plugin DS View**, com **cache local** que espelha o conteúdo online no disco — a TV segue tocando
 mesmo sem internet. Repo git compartilhado com o app Android (`dsview-apps/`, monorepo), separado do plugin,
-**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.6.0**; falta validar o instalador em Windows real.
+**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.6.1**; falta validar o instalador em Windows real.
 
 > Faz parte do guarda-chuva `Projetos/DSFácil/`. O produto é o plugin (`../ds-facil/`, tem o CLAUDE.md detalhado).
 > Este app **consome os endpoints públicos que já existem** no plugin — não exige nenhuma mudança nele.
