@@ -18,6 +18,8 @@ let onStatus = () => {};
 let lastSyncAt = '';
 let healthOverride = '';
 let healthError = '';
+let activeSync = null;
+const DOWNLOAD_WORKERS = 3;
 
 const HEARTBEAT_MS = 60000;
 const HEARTBEAT_JITTER_MS = 15000;
@@ -37,43 +39,49 @@ function cacheableUrls(payload) {
       const url = it[key];
       if (url && /^https?:\/\//i.test(url) && !seen.has(url)) {
         seen.add(url);
-        out.push(url);
+        out.push({ url, video: key === 'src' && (it.kind === 'video' || /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(url)) });
       }
     }
   }
-  return out;
+  return out.sort((a, b) => Number(a.video) - Number(b.video)).map((entry) => entry.url);
 }
 
 function fetchJson(url) {
-  return new Promise((resolve, reject) => {
-    const req = net.request({ method: 'GET', url, redirect: 'follow' });
-    let body = '';
-    req.on('response', (res) => {
-      res.on('data', (c) => (body += c));
-      res.on('end', () => {
-        try { resolve(JSON.parse(body)); } catch (e) { reject(new Error('resposta inválida')); }
-      });
-      res.on('error', reject);
-    });
-    req.on('error', reject);
-    req.end();
-  });
+  return requestJson(url);
 }
 
 function postJson(url, obj) {
+  return requestJson(url, obj);
+}
+
+function requestJson(url, obj) {
   return new Promise((resolve, reject) => {
-    const req = net.request({ method: 'POST', url, redirect: 'follow' });
-    req.setHeader('Content-Type', 'application/json');
+    const req = net.request({ method: obj === undefined ? 'GET' : 'POST', url, redirect: 'follow' });
+    let settled = false;
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (error) { reject(error); try { req.abort(); } catch (_) {} }
+      else resolve(value);
+    };
+    const timeout = setTimeout(() => finish(new Error('Consulta sem resposta')), 30000);
+    if (obj !== undefined) req.setHeader('Content-Type', 'application/json');
     let body = '';
     req.on('response', (res) => {
-      res.on('data', (c) => (body += c));
+      res.on('error', (e) => finish(e));
+      res.on('aborted', () => finish(new Error('Consulta interrompida')));
+      if (res.statusCode !== 200) return finish(new Error('HTTP ' + res.statusCode));
       res.on('end', () => {
-        try { resolve(JSON.parse(body)); } catch (e) { reject(new Error('resposta inválida')); }
+        try { finish(null, JSON.parse(body)); } catch (e) { finish(new Error('resposta inválida')); }
       });
-      res.on('error', reject);
+      res.on('data', (c) => {
+        body += c;
+        if (body.length > 10 * 1024 * 1024) finish(new Error('Resposta excede limite'));
+      });
     });
-    req.on('error', reject);
-    req.write(JSON.stringify(obj || {}));
+    req.on('error', (e) => finish(e));
+    if (obj !== undefined) req.write(JSON.stringify(obj || {}));
     req.end();
   });
 }
@@ -85,28 +93,50 @@ function postJson(url, obj) {
 async function authenticate(password) {
   const cfg = config.read();
   const api = config.realApi(cfg);
+  const epoch = cache.generation();
+  const current = () => epoch === cache.generation() && config.realApi(config.read()) === api;
   if (!api) return { status: 'not-configured' };
   let res;
   try {
     res = await postJson(api + '/auth', { password: password || '', ...telemetry(cfg) });
   } catch (e) {
     const lg = state.get();
-    return (cfg.device && lg) ? { status: 'ok' } : { status: 'offline' }; // sem rede: vale o device+cache já salvos.
+    return (current() && cfg.device && lg) ? { status: 'ok' } : { status: 'offline' };
   }
   if (res && res.status === 'ok') {
+    if (!current()) return { status: 'offline' };
     if (res.device) config.write({ device: res.device });
-    await syncOnce().catch(() => {}); // baixa a mídia já com o device novo (preloader escuta o progresso).
+    const result = await syncOnce();
+    if (!current()) return { status: 'offline' };
+    if (!result.ok && cfg.offline !== false && !state.get()) return { status: 'download-failed' };
     return { status: 'ok' };
   }
   return res || { status: 'offline' }; // password | expired | notfound...
 }
 
 /** Uma passada de sincronização. Não lança: devolve um resumo (para o preloader/log). */
-async function syncOnce() {
+function syncOnce() {
   const cfg = config.read();
+  const epoch = cache.generation();
+  const key = JSON.stringify([config.realApi(cfg), cfg.device, cfg.offline, epoch]);
+  if (activeSync && activeSync.key === key) return activeSync.promise;
+  const previous = activeSync && activeSync.promise;
+  const promise = (async () => {
+    if (previous) await previous.catch(() => {});
+    if (epoch !== cache.generation() || config.realApi(config.read()) !== config.realApi(cfg)) return { ok: false, reason: 'cancelled' };
+    return syncPass(cfg, epoch);
+  })().catch(() => ({ ok: false, reason: 'sync-failed' })).finally(() => {
+    if (activeSync && activeSync.promise === promise) activeSync = null;
+  });
+  activeSync = { key, promise };
+  return promise;
+}
+
+async function syncPass(cfg, epoch) {
   if (cfg.offline === false) return { ok: false, reason: 'online-only' }; // modo só-online: nada de cache.
   const api = config.realApi(cfg);
   if (!api) return { ok: false, reason: 'not-configured' };
+  const current = () => epoch === cache.generation() && config.realApi(config.read()) === api && config.read().offline !== false;
 
   const url = api + '?t=' + Date.now() + (cfg.device ? '&device=' + encodeURIComponent(cfg.device) : '');
   let res;
@@ -122,26 +152,37 @@ async function syncOnce() {
   }
 
   const payload = res.payload;
-  lastSyncAt = new Date().toISOString();
+  if (!current()) return { ok: false, reason: 'cancelled' };
   const prev = state.get();
-  if (prev && prev.version && prev.version === payload.version) {
-    return { ok: true, changed: false }; // nada mudou.
-  }
 
   // Baixa o que falta (só o novo/alterado — o resto já está no disco).
   const urls = cacheableUrls(payload);
   let downloaded = 0;
-  let idx = 0;
-  for (const u of urls) {
-    idx++;
-    onStatus({ phase: 'downloading', current: idx, total: urls.length });
-    if (cache.has(u)) continue;
-    try { await cache.download(u); downloaded++; } catch (e) { /* item falho: online ainda toca da origem */ }
+  const missing = urls.filter((url) => !cache.isVerified(url));
+  if (!missing.length && prev && prev.version && prev.version === payload.version) {
+    lastSyncAt = new Date().toISOString();
+    return { ok: true, changed: false };
+  }
+  let cursor = 0, completed = urls.length - missing.length, failed = 0;
+  onStatus({ phase: 'downloading', current: completed, total: urls.length });
+  await Promise.all(Array.from({ length: Math.min(DOWNLOAD_WORKERS, missing.length) }, async () => {
+    while (cursor < missing.length && current()) {
+      const url = missing[cursor++];
+      try { await cache.download(url); downloaded++; } catch (_) { failed++; }
+      completed++;
+      if (current()) onStatus({ phase: 'downloading', current: completed, total: urls.length });
+    }
+  }));
+  if (!current()) return { ok: false, reason: 'cancelled' };
+  if (failed || !urls.every((url) => cache.isVerified(url))) {
+    onStatus({ phase: 'offline' });
+    return { ok: false, reason: 'download-failed', downloaded, failed };
   }
 
   // Troca atômica: só depois de tudo no disco, aponta a "última versão boa" para o novo payload.
-  state.set(payload);
+  if (!state.set(payload)) return { ok: false, reason: 'storage-failed' };
   const removed = cache.prune(urls);
+  lastSyncAt = new Date().toISOString();
   onStatus({ phase: 'ready' });
   return { ok: true, changed: true, downloaded, removed, total: urls.length };
 }

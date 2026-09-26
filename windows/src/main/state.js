@@ -18,15 +18,16 @@ function get() {
 }
 
 function set(payload) {
-  mem = payload || null;
   // Mesmo motivo do config.js: rename é atômico, escrever direto no arquivo final não é — queda
   // de energia no meio do write corrompe o "última versão boa" e a TV não reabre offline no boot.
   try {
     const f = file();
     const tmp = f + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(mem));
+    fs.writeFileSync(tmp, JSON.stringify(payload || null));
     fs.renameSync(tmp, f);
-  } catch (e) { /* tolera disco cheio */ }
+    mem = payload || null;
+    return true;
+  } catch (e) { return false; }
 }
 
 function clear() {

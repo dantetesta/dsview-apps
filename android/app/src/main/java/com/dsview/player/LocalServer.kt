@@ -6,8 +6,21 @@ import fi.iki.elonen.NanoHTTPD
 import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
-import java.net.HttpURLConnection
-import java.net.URL
+
+/** One byte range, including suffix requests used by MP4 decoders to read the trailer. */
+internal fun parseMediaRange(header: String, length: Long): LongRange? {
+    if (length <= 0) return null
+    val match = Regex("bytes=(\\d*)-(\\d*)").matchEntire(header.trim()) ?: return null
+    val first = match.groupValues[1]
+    val last = match.groupValues[2]
+    if (first.isEmpty()) {
+        val suffix = last.toLongOrNull() ?: return null
+        return if (suffix > 0) maxOf(0, length - suffix)..(length - 1) else null
+    }
+    val start = first.toLongOrNull() ?: return null
+    val end = if (last.isEmpty()) length - 1 else minOf(last.toLongOrNull() ?: return null, length - 1)
+    return if (start < length && start <= end) start..end else null
+}
 
 /**
  * Servidor HTTP local (só 127.0.0.1, porta alta aleatória). Imita a forma da API do player para o
@@ -45,7 +58,7 @@ class LocalServer(
                 method == Method.OPTIONS -> cors(newFixedLengthResponse(Response.Status.NO_CONTENT, MIME_PLAINTEXT, ""))
                 uri == "/state" && method == Method.GET -> serveState()
                 uri == "/state/auth" && method == Method.POST -> proxyAuth(session)
-                uri.startsWith("/media/") && method == Method.GET -> serveMedia(session, uri.removePrefix("/media/"))
+                uri.startsWith("/media/") && (method == Method.GET || method == Method.HEAD) -> serveMedia(session, uri.removePrefix("/media/"))
                 uri == "/setup" || uri == "/" -> setupHtml()
                 uri == "/player" -> asset("player.html", "text/html")
                 uri.startsWith("/assets/") -> asset(uri.removePrefix("/assets/"), null)
@@ -84,28 +97,12 @@ class LocalServer(
     }
 
     private fun proxyAuth(session: IHTTPSession): Response {
-        val api = config.realApi() ?: return json(JSONObject().put("status", "offline"))
         val files = HashMap<String, String>()
         session.parseBody(files)
         val bodyStr = files["postData"] ?: "{}"
-        val res: JSONObject = try {
-            postJson(api + "/auth", bodyStr)
-        } catch (e: Exception) {
-            val lg = state.get()
-            return json(
-                if (config.device.isNotEmpty() && lg != null)
-                    JSONObject().put("status", "ok").put("device", config.device).put("payload", rewrite(lg))
-                else JSONObject().put("status", "offline")
-            )
-        }
+        val res = syncer.authenticate(JSONObject(bodyStr).optString("password"))
         if (res.optString("status") == "ok") {
-            if (res.has("device")) config.device = res.optString("device")
-            if (res.has("payload")) {
-                val p = res.getJSONObject("payload")
-                state.set(p)
-                Thread { try { syncer.syncOnce() } catch (e: Exception) {} }.start()
-                res.put("payload", rewrite(p))
-            }
+            res.put("device", config.device).put("payload", rewrite(state.get()))
         }
         return json(res)
     }
@@ -113,25 +110,22 @@ class LocalServer(
     private fun serveMedia(session: IHTTPSession, name: String): Response {
         if (!MEDIA_NAME_RE.matches(name)) return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "")
         val file = File(cache.dir(), name)
-        if (!file.exists()) return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "")
+        if (!file.isFile || file.length() == 0L) return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "")
         val type = mimeOf(name)
         val len = file.length()
         val range = session.headers["range"]
         if (range != null) {
-            val m = Regex("bytes=(\\d*)-(\\d*)").find(range)
-            var start = m?.groupValues?.get(1)?.toLongOrNull() ?: 0L
-            var end = m?.groupValues?.get(2)?.toLongOrNull() ?: (len - 1)
-            if (start < 0) start = 0
-            if (end >= len) end = len - 1
-            if (start > end) {
+            val parsed = parseMediaRange(range, len)
+            if (parsed == null) {
                 val r = newFixedLengthResponse(Response.Status.RANGE_NOT_SATISFIABLE, MIME_PLAINTEXT, "")
                 r.addHeader("Content-Range", "bytes */$len")
                 return cors(r)
             }
+            val start = parsed.first
+            val end = parsed.last
             val contentLength = end - start + 1
             val fis = FileInputStream(file)
-            var skipped = 0L
-            while (skipped < start) { val s = fis.skip(start - skipped); if (s <= 0) break; skipped += s }
+            fis.channel.position(start)
             val r = newFixedLengthResponse(Response.Status.PARTIAL_CONTENT, type, fis, contentLength)
             r.addHeader("Content-Range", "bytes $start-$end/$len")
             r.addHeader("Accept-Ranges", "bytes")
@@ -187,10 +181,7 @@ class LocalServer(
                     val knownOrigin = config.baseDomain.ifEmpty { config.origin }
                     val r = Resolver.resolve(body.optString("input"), knownOrigin)
                     // Troca de playlist zera o device.
-                    config.origin = r.origin
-                    config.token = r.token
-                    config.device = ""
-                    config.lastUrl = body.optString("input")
+                    syncer.changePlaylist(r.origin, r.token, body.optString("input"))
                     json(JSONObject().put("ok", true).put("origin", r.origin).put("token", r.token))
                 } catch (e: Exception) {
                     json(JSONObject().put("ok", false).put("error", e.message ?: "Falha ao resolver a URL."))
@@ -202,7 +193,7 @@ class LocalServer(
             }
             "authenticate" -> json(syncer.authenticate(body.optString("password")))
             "sync" -> json(syncer.syncOnce())
-            "offline" -> { config.offline = body.optBoolean("on", true); json(JSONObject().put("offline", config.offline)) }
+            "offline" -> { syncer.setOffline(body.optBoolean("on", true)); json(JSONObject().put("offline", config.offline)) }
             "interval" -> {
                 config.syncInterval = body.optInt("minutes", Config.SYNC_DEFAULT)
                 syncer.restart()
@@ -240,8 +231,7 @@ class LocalServer(
             // Abre a escolha de tela inicial do aparelho (caminho mais garantido em TV Box).
             "autostart-home" -> { abrirTelaSistema(android.provider.Settings.ACTION_HOME_SETTINGS, false); json(JSONObject().put("ok", true)) }
             "clear" -> {
-                val removed = cache.clear()
-                state.clear()
+                val removed = syncer.clearCache()
                 val res = try { syncer.syncOnce() } catch (e: Exception) { JSONObject().put("ok", false) }
                 json(JSONObject().put("removed", removed).put("resync", res))
             }
@@ -345,24 +335,6 @@ class LocalServer(
         r.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         r.addHeader("Access-Control-Allow-Headers", "Content-Type")
         return r
-    }
-
-    private fun postJson(url: String, body: String): JSONObject {
-        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-            instanceFollowRedirects = true
-            connectTimeout = 15000
-            readTimeout = 20000
-            requestMethod = "POST"
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json")
-        }
-        try {
-            conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
-            val stream = if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
-            return JSONObject(readLimited(stream))
-        } finally {
-            conn.disconnect()
-        }
     }
 
     private fun mimeOf(name: String): String = when (name.substringAfterLast('.').lowercase()) {

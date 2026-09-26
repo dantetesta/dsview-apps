@@ -2,7 +2,7 @@
 
 App **kiosk offline Android** (Kotlin + WebView), irmão do `../dsview` (Windows/Electron). Roda em
 **qualquer Android** incluindo **Android TV**. Mesma arquitetura **cache-proxy**: servidor local espelha a API do
-player, loop de sync espelha a mídia no disco. **v0.7.3** (versionCode 29).
+player, loop de sync espelha a mídia no disco. **v0.7.4** (versionCode 30).
 Repo git compartilhado com o app Windows (`dsview-apps/`, monorepo), **PÚBLICO** (`github.com/dantetesta/dsview-apps`)
 — é justamente por ser público que o `player.js` copiado tem a marca removida (ver Gotchas de build). Faz parte do
 guarda-chuva `Projetos/DSFácil/`.
@@ -64,8 +64,7 @@ isto só poupa o caminho manual. Espelha `updater.js` do app Windows.
    por outro caminho: `LocalServer` roda numa thread própria (NanoHTTPD), sem referência ao `Activity`, então
    `MainActivity` guarda `instance` (companion, setado em `onResume`/limpo em `onPause`) e expõe `requestExit()`
    (`runOnUiThread { exitKiosk() }`) — a rota `/dsf/exit` chama `MainActivity.instance?.requestExit()`.
-6. **Sync por `version`**: só rebaixa quando `payload.version` muda (depende do plugin bumpar). Tudo atômico
-   (mídia `.part`→rename; last-good só depois de tudo no disco; então prune).
+6. **Sync verifica integridade mesmo com `version` igual.** Desde 0.7.4, até três downloads simultâneos priorizam imagens; cada download tem até três tentativas, valida tamanho/tipo e grava SHA-256 em sidecar. Cache legado continua disponível offline e é rebaixado para verificação online. Mídia `.part`→rename; last-good somente após todos os arquivos válidos e persistência atômica bem-sucedida; então prune. Falha mantém a última playlist completa. Limpar/trocar playlist ou modo invalida operações antigas. Resolver a mesma playlist preserva device/cache.
 7. **Depende do contrato público do plugin** (endpoints `/wp-json/ds-facil/v1/player/{token}` + `/auth`, campos
    `queue[].{src,provider,kind,audio}` + `version`, status ok/password/expired/offline). Mudou lá → quebra aqui.
 
@@ -101,12 +100,10 @@ O APK sempre esteve tecnicamente compatível (`minSdk 21`, `targetSdk 34`, sem l
 - Ícone/banner **já são arte final** (PNG por densidade em `res/mipmap-*/ic_launcher*.png` + adaptive-icon em
   `mipmap-anydpi-v26/`, banner em `res/drawable-nodpi/tv_banner.png`; `android:icon` aponta `@mipmap`, só o banner
   usa `@drawable`) — não é mais vetor placeholder.
-- **Copy do player é branqueado por linha** (`copyPlayer` no `build.gradle.kts`): qualquer linha que, sem espaços nas
-  pontas, começa com `/*` ou `*` vira `""`. Sem estado entre linhas, mesma closure pros dois arquivos — confirmado que
-  nenhuma linha real de código do plugin começa assim, então o filtro não corrompe nada. Zero string de marca
-  (`Dante`, `dantetesta`, `DS Fácil`) sobrevive na cópia.
+- **Copy do player é filtrado por linha** (`copyPlayer` no `build.gradle.kts`): comentários de bloco viram linhas vazias, mas seletores CSS universais `* { ... }` precisam ser preservados. O filtro antigo removia `box-sizing:border-box` e fazia relógio/clima ultrapassarem a tela somente nos apps. Desde 0.7.4, `verifyPlayerCopy` protege esse reset antes de todo build. Testar assets extraídos do APK, não apenas o player fonte.
 
 ## Backlog aberto
+- **Validação 0.7.4:** testes JVM cobrem HTTP real de 25/99 MB, truncamento, concorrência, retries, Range/HEAD, disco com falha e identidade da playlist. Isso não prova compatibilidade de codecs em todas as TV boxes; tela verde também exige examinar arquivo/decoder do aparelho. O player aplica textZoom=100, preservando a escala de acessibilidade no setup.
 - Testar em **Android real + Android TV** (kiosk, auto-start no boot, offline, só-online).
 - Validar instalação/atualização do APK assinado em Android real e Android TV.
 - DPAD no setup já tem base (`isFocusable`+`tabIndex=0`+`onkeydown` Enter em `setup.js`); falta só validar em TV real.

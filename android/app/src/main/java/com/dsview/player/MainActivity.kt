@@ -129,6 +129,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
         w.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                val playing = url?.contains("/player?") == true ||
+                    Regex("/play/[A-Za-z0-9]+/?(?:\\?|$)").containsMatchIn(url ?: "")
+                // Keep signage geometry stable on TVs with enlarged system fonts; setup stays accessible.
+                view?.settings?.textZoom = if (playing) 100 else (resources.configuration.fontScale * 100).toInt()
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 val playing = url?.contains("/player?") == true ||

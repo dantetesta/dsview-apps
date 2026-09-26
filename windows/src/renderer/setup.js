@@ -58,6 +58,7 @@
         showLoader(false);
         if (auth.status === 'password') showErr('Essa playlist pede senha. Digite a senha e tente de novo.');
         else if (auth.status === 'expired') showErr('Plano expirado ou playlist indisponível.');
+        else if (auth.status === 'download-failed') showErr('Não foi possível baixar toda a playlist. Confira a conexão e o espaço livre e tente novamente.');
         else showErr('Não consegui conectar. Confira a internet e o link.');
         return;
       }

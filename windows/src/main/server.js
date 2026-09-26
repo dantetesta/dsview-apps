@@ -9,7 +9,6 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { net } = require('electron');
 const config = require('./config');
 const cache = require('./cache');
 const state = require('./state');
@@ -55,6 +54,22 @@ function sendJson(res, obj) {
 // não precisar reimplementar o regex (e divergir dele com o tempo).
 const MEDIA_NAME_RE = /^[a-f0-9]{40}\.[a-z0-9]{1,5}$/;
 
+function parseRange(range, size) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(range));
+  if (!m || (!m[1] && !m[2]) || size <= 0) return null;
+  let start, end;
+  if (!m[1]) {
+    const suffix = Number(m[2]);
+    if (!Number.isSafeInteger(suffix) || suffix <= 0) return null;
+    start = Math.max(0, size - suffix); end = size - 1;
+  } else {
+    start = Number(m[1]); end = m[2] ? Number(m[2]) : size - 1;
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start >= size || start > end) return null;
+    end = Math.min(end, size - 1);
+  }
+  return { start, end };
+}
+
 function serveMedia(req, res, name) {
   if (!MEDIA_NAME_RE.test(name)) { res.writeHead(400); return res.end(); }
   const file = path.join(cache.dir(), name);
@@ -64,12 +79,9 @@ function serveMedia(req, res, name) {
   const type = MIME[path.extname(name)] || 'application/octet-stream';
   const range = req.headers.range;
   if (range) {
-    const m = /bytes=(\d*)-(\d*)/.exec(range);
-    let start = m && m[1] ? parseInt(m[1], 10) : 0;
-    let end = m && m[2] ? parseInt(m[2], 10) : stat.size - 1;
-    if (isNaN(start) || start < 0) start = 0;
-    if (isNaN(end) || end >= stat.size) end = stat.size - 1;
-    if (start > end) { res.writeHead(416, { 'Content-Range': 'bytes */' + stat.size }); return res.end(); }
+    const parsed = parseRange(range, stat.size);
+    if (!parsed) { res.writeHead(416, { 'Content-Range': 'bytes */' + stat.size }); return res.end(); }
+    const { start, end } = parsed;
     res.writeHead(206, {
       'Content-Type': type,
       'Content-Range': 'bytes ' + start + '-' + end + '/' + stat.size,
@@ -77,9 +89,11 @@ function serveMedia(req, res, name) {
       'Content-Length': end - start + 1,
       'Cache-Control': 'no-store',
     });
+    if (req.method === 'HEAD') return res.end();
     pipeAndClean(fs.createReadStream(file, { start, end }), res);
   } else {
     res.writeHead(200, { 'Content-Type': type, 'Content-Length': stat.size, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' });
+    if (req.method === 'HEAD') return res.end();
     pipeAndClean(fs.createReadStream(file), res);
   }
 }
@@ -90,41 +104,35 @@ function serveMedia(req, res, name) {
 function pipeAndClean(readStream, res) {
   const cleanup = () => readStream.destroy();
   res.on('close', cleanup);
-  readStream.on('error', cleanup);
+  readStream.on('error', () => { cleanup(); res.destroy(); });
   readStream.pipe(res);
 }
 
 async function proxyAuth(req, res) {
   const cfg = config.read();
   const api = config.realApi(cfg);
+  const epoch = cache.generation();
   if (!api) return sendJson(res, { status: 'offline' });
 
   let body = '';
-  req.on('data', (c) => (body += c));
-  req.on('end', () => {
-    const upstream = net.request({ method: 'POST', url: api + '/auth', redirect: 'follow' });
-    upstream.setHeader('Content-Type', 'application/json');
-    let out = '';
-    upstream.on('response', (r) => {
-      r.on('data', (c) => (out += c));
-      r.on('end', () => {
-        let parsed;
-        try { parsed = JSON.parse(out); } catch (e) { return sendJson(res, { status: 'offline' }); }
-        if (parsed && parsed.status === 'ok') {
-          if (parsed.device) config.write({ device: parsed.device });
-          if (parsed.payload) { state.set(parsed.payload); sync.syncOnce().catch(() => {}); parsed.payload = rewrite(parsed.payload); }
-        }
-        sendJson(res, parsed);
-      });
-      r.on('error', () => sendJson(res, { status: 'offline' }));
-    });
-    upstream.on('error', () => {
-      // Sem internet: se já autenticou antes e tem cache, deixa o player seguir pelo /state.
-      const lg = state.get();
-      sendJson(res, lg ? { status: 'ok', device: config.read().device, payload: rewrite(lg) } : { status: 'offline' });
-    });
-    upstream.write(body || '{}');
-    upstream.end();
+  req.on('data', (chunk) => {
+    body += chunk;
+    if (body.length > 16384) req.destroy();
+  });
+  req.on('error', () => { if (!res.destroyed) res.destroy(); });
+  req.on('end', async () => {
+    try {
+      const input = JSON.parse(body || '{}');
+      if (epoch !== cache.generation() || config.realApi(config.read()) !== api) return sendJson(res, { status: 'offline' });
+      const result = await sync.authenticate(typeof input.password === 'string' ? input.password : '');
+      if (res.destroyed) return;
+      if (epoch !== cache.generation() || config.realApi(config.read()) !== api) return sendJson(res, { status: 'offline' });
+      if (result.status !== 'ok') return sendJson(res, result);
+      const good = state.get();
+      return sendJson(res, good ? { status: 'ok', device: config.read().device, payload: rewrite(good) } : { status: 'offline' });
+    } catch (_) {
+      if (!res.destroyed && !res.writableEnded) sendJson(res, { status: 'offline' });
+    }
   });
 }
 
@@ -141,7 +149,7 @@ function handler(req, res) {
       return sendJson(res, lg ? { status: 'ok', payload: rewrite(lg) } : { status: 'offline' });
     }
     if (req.method === 'POST' && url === '/state/auth') return proxyAuth(req, res);
-    if (req.method === 'GET' && url.startsWith('/media/')) return serveMedia(req, res, decodeURIComponent(url.slice('/media/'.length)));
+    if ((req.method === 'GET' || req.method === 'HEAD') && url.startsWith('/media/')) return serveMedia(req, res, decodeURIComponent(url.slice('/media/'.length)));
     res.writeHead(404); res.end();
   } catch (e) {
     try { res.writeHead(400); res.end(); } catch (e2) { /* resposta já em andamento, nada a fazer */ }
@@ -159,4 +167,4 @@ function start() {
   });
 }
 
-module.exports = { start, getPort: () => port, rewrite, MEDIA_NAME_RE };
+module.exports = { start, getPort: () => port, rewrite, MEDIA_NAME_RE, handler, parseRange };

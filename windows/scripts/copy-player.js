@@ -23,7 +23,9 @@ for (const f of files) {
     const conteudo = fs
       .readFileSync(src, 'utf8')
       .split('\n')
-      .map((linha) => (/^\s*(\/\*|\*)/.test(linha) ? '' : linha))
+      // CSS universal selector is executable styling, not a comment continuation.
+      // Removing this reset changes width/height + padding to content-box in the apps.
+      .map((linha) => (/^\s*(\/\*|\*)/.test(linha) && !/^\s*\*\s*\{/.test(linha) ? '' : linha))
       .join('\n');
     fs.writeFileSync(dst, conteudo);
     console.log(`  ✓ ${f}  ←  ${path.relative(process.cwd(), src)}`);

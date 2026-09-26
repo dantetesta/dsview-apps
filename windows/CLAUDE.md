@@ -3,7 +3,7 @@
 App **kiosk offline** (Electron 31, Windows 10/11 x64). Uma casca full-screen sem barra de URL em volta do
 **player do plugin DS View**, com **cache local** que espelha o conteúdo online no disco — a TV segue tocando
 mesmo sem internet. Repo git compartilhado com o app Android (`dsview-apps/`, monorepo), separado do plugin,
-**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.6.1**; falta validar o instalador em Windows real.
+**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.6.2**; falta validar o instalador em Windows real.
 
 > Faz parte do guarda-chuva `Projetos/DSFácil/`. O produto é o plugin (`../ds-facil/`, tem o CLAUDE.md detalhado).
 > Este app **consome os endpoints públicos que já existem** no plugin — não exige nenhuma mudança nele.
@@ -111,10 +111,10 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
    injetado é `.../state` (sem barra no fim) — concatenar `/auth` dá `/state/auth`. As rotas do `server.js` são
    **literalmente** `/state` e `/state/auth`. No servidor real o `api` seria `.../player/{token}` e o mesmo `+ '/auth'`
    resolve certo. **Não mude o path do `api` sem alinhar as rotas do server.**
-3. **Sync é por `version`.** Só rebaixa mídia quando `payload.version` muda. Depende do plugin **bumpar o `version`**
-   a cada alteração de conteúdo (ele faz). Se o conteúdo mudar sem mudar o `version`, o app não pega.
+3. **Sync valida cache mesmo com `version` igual.** Desde 0.6.2, downloads ausentes, truncados ou legados sem marcador são reparados online; legado continua disponível offline. Até três workers, imagens primeiro e três tentativas por arquivo. O marcador `.verified` armazena tamanho confirmado, não checksum do backend. Status, Content-Length, término do stream e Content-Type são verificados. O `version` continua identificando mudanças da playlist.
 4. **Tudo atômico, na ordem certa.** Mídia baixa em `.part`→`rename`; o `last-good` só aponta pro payload novo
    **depois** que toda a mídia está no disco, e só então `prune()`. Queda no meio nunca deixa o cache inconsistente.
+   Persistência de last-good precisa retornar sucesso antes de prune. Limpar/trocar playlist invalida downloads/sync/autenticação antigos; `/state/auth` usa a mesma implementação protegida do setup.
 5. **A porta é aleatória (`listen 0`) e nunca é persistida.** Por isso o `rewrite()` (troca src → 127.0.0.1) roda
    **na hora de servir** (`server.js`), não ao gravar — o `last-good.json` fica port-agnostic e sobrevive a reboot.
 6. **YouTube/Vimeo nunca são cacheados** (o vídeo mora na plataforma). Online tocam normal; offline são pulados.
@@ -129,10 +129,7 @@ RENDERER (janela kiosk, contextIsolation)      MAIN PROCESS (Node)
    `routeStartup` manda pro setup quando offline **sem** device, e a senha é autenticada lá (`sync.authenticate`).
 10. **Áudio precisa de DUAS coisas:** o switch `autoplay-policy` no Electron **e** o gesto sintético no `player.html`
     (o `player.js` só desmuta quando seu `audioOn` vira true, e isso exige um "click"). Um sem o outro = mudo.
-11. **`scripts/copy-player.js` branqueia TODA linha de comentário do player, não só o cabeçalho de marca** — qualquer
-    linha (sem espaço nas pontas) que começa com `/*` ou `*` vira `""`, inclusive diretivas de lint no meio do arquivo
-    (`/* global YT */` etc.). Inofensivo hoje, mas se o plugin ganhar um comentário mid-file que importe, ele some
-    silenciosamente na cópia branca.
+11. **`scripts/copy-player.js` filtra comentários por linha, preservando seletores CSS universais `* { ... }`.** O filtro antigo removia o reset `box-sizing:border-box`, causando cortes nos cartões somente nos apps. Desde 0.6.2, há regressão da cópia em `test/copy-player.test.js`; validar layout com assets do app.asar, além da fonte. Diretivas de comentário como `/* global YT */` continuam removidas.
 12. **`loadPlayer()` reafirma kiosk+fullscreen toda vez que carrega** (`win.setKiosk(true)`/`setFullScreen(true)`).
     Sem isso, sair pras configurações (que tira kiosk) e depois "Salvar e iniciar" (IPC `app:play` → `loadPlayer()`)
     deixava a janela numa decoração/tamanho errado — bug real corrigido em 0.4.2. Qualquer novo caminho que leve

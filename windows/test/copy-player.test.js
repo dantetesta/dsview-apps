@@ -1,0 +1,34 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+
+test('player copy retains universal CSS reset while removing block-comment lines', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dsview-copy-player-'));
+  const sourceDir = path.join(root, 'ds-facil', 'player');
+  const scriptsDir = path.join(root, 'dsview-apps', 'windows', 'scripts');
+  const targetDir = path.join(root, 'dsview-apps', 'windows', 'src', 'renderer');
+  for (const directory of [sourceDir, scriptsDir, targetDir]) fs.mkdirSync(directory, { recursive: true });
+  const script = path.join(scriptsDir, 'copy-player.js');
+  fs.copyFileSync(path.join(__dirname, '..', 'scripts', 'copy-player.js'), script);
+  const reset = '* { margin: 0; padding: 0; box-sizing: border-box; }';
+  const css = ['/* header', ' * attribution */', reset, '  *{ box-sizing: border-box; }', '.card { width: 100%; padding: 24px; }'].join('\n');
+  const js = ['/*! header', ' * attribution', ' */', '(function () { window.ready = true; })();'].join('\n');
+  const qr = '// QR copyright, MIT License\nwindow.qrcode = true;';
+  fs.writeFileSync(path.join(sourceDir, 'player.css'), css);
+  fs.writeFileSync(path.join(sourceDir, 'player.js'), js);
+  fs.writeFileSync(path.join(sourceDir, 'qrcode.js'), qr);
+  execFileSync(process.execPath, [script], { cwd: root, stdio: 'pipe' });
+  const copiedCss = fs.readFileSync(path.join(targetDir, 'player.css'), 'utf8');
+  assert.ok(copiedCss.includes(reset));
+  assert.ok(copiedCss.includes('  *{ box-sizing: border-box; }'));
+  assert.ok(copiedCss.includes('.card { width: 100%; padding: 24px; }'));
+  assert.ok(!copiedCss.includes('attribution'));
+  const copiedJs = fs.readFileSync(path.join(targetDir, 'player.js'), 'utf8');
+  assert.ok(!copiedJs.includes('attribution'));
+  assert.ok(copiedJs.includes('(function () { window.ready = true; })();'));
+  assert.equal(fs.readFileSync(path.join(targetDir, 'qrcode.js'), 'utf8'), qr);
+});

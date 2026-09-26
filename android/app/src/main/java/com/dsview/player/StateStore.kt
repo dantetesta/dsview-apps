@@ -8,8 +8,8 @@ import java.io.File
  * "Última versão boa" do payload (o ORIGINAL, sem reescrita de URL). Persistido em disco para
  * o app abrir offline após um reboot. Espelha o state.js do app Windows.
  */
-class StateStore(context: Context) {
-    private val file = File(context.applicationContext.filesDir, "last-good.json")
+class StateStore internal constructor(private val file: File) {
+    constructor(context: Context) : this(File(context.applicationContext.filesDir, "last-good.json"))
     private var mem: JSONObject? = null
 
     @Synchronized
@@ -20,10 +20,16 @@ class StateStore(context: Context) {
 
     @Synchronized
     fun set(payload: JSONObject?) {
-        mem = payload
+        if (payload == null) { clear(); return }
+        val part = File(file.path + ".part")
         try {
-            if (payload != null) file.writeText(payload.toString()) else file.delete()
-        } catch (e: Exception) { /* tolera disco cheio */ }
+            part.outputStream().use { out ->
+                out.write(payload.toString().toByteArray(Charsets.UTF_8))
+                out.fd.sync()
+            }
+            if (!part.renameTo(file)) throw java.io.IOException("Falha ao salvar playlist offline")
+            mem = payload
+        } finally { part.delete() }
     }
 
     @Synchronized

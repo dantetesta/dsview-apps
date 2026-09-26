@@ -10,8 +10,8 @@ import java.net.URLEncoder
  * Config persistente (SharedPreferences). Espelha o config.js do app Windows.
  * origin/token da playlist ativa, device (sessão eterna do /auth), favoritos, e preferências.
  */
-class Config(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences("dsview", Context.MODE_PRIVATE)
+class Config internal constructor(private val prefs: android.content.SharedPreferences) {
+    constructor(context: Context) : this(context.applicationContext.getSharedPreferences("dsview", Context.MODE_PRIVATE))
 
     var origin: String
         get() = prefs.getString("origin", "") ?: ""

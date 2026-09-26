@@ -20,8 +20,8 @@ android {
         applicationId = "com.dsview.player"
         minSdk = 21          // Android 5.0 — cobre TV boxes e Android TV antigos.
         targetSdk = 34
-        versionCode = 29
-        versionName = "0.7.3"
+        versionCode = 30
+        versionName = "0.7.4"
     }
 
     signingConfigs {
@@ -55,20 +55,35 @@ android {
 // Player single-source: copia player.js/player.css/qrcode.js do plugin (../../ds-facil/player) para os assets no build.
 // A cópia é gitignorada; nunca editar em app/src/main/assets — corrigir no plugin e rebuildar.
 val copyPlayer by tasks.registering(Copy::class) {
+    // Copy's up-to-date check does not track changes inside the line filter closure.
+    inputs.property("playerCopyFilterVersion", 2)
     from("$rootDir/../../ds-facil/player") { include("player.js", "player.css", "qrcode.js") }
     into("$projectDir/src/main/assets")
     // O player vem do plugin com o cabeçalho da marca de origem. Este app é white-label, então
     // toda linha de comentário de bloco vira vazia na cópia — regra SEM ESTADO de propósito: o
     // filter do Gradle é por linha e a mesma closure roda para os dois arquivos, então qualquer
-    // variável de controle vazaria de um para o outro. Também não citamos nome nenhum aqui,
-    // porque este repositório é público. O código do player não tem marca fora dos comentários
-    // (conferido: nenhuma linha de código começa com "*" nem fecha comentário sozinha).
+    // variável de controle vazaria de um para o outro. O asterisco também é um seletor CSS:
+    // preservar `* { ... }` é essencial para manter box-sizing e não cortar as cenas no app.
     filter { linha: String ->
         val t = linha.trimStart()
-        if (t.startsWith("/*") || t.startsWith("*")) "" else linha
+        val universalRule = Regex("^\\*\\s*\\{").containsMatchIn(t)
+        if (t.startsWith("/*") || (t.startsWith("*") && !universalRule)) "" else linha
     }
 }
-tasks.named("preBuild") { dependsOn(copyPlayer) }
+val verifyPlayerCopy by tasks.registering {
+    dependsOn(copyPlayer)
+    doLast {
+        val source = file("$rootDir/../../ds-facil/player/player.css")
+        val copied = file("$projectDir/src/main/assets/player.css")
+        if (source.exists()) {
+            val css = copied.readText()
+            source.readLines().filter { Regex("^\\s*\\*\\s*\\{").containsMatchIn(it) }.forEach { rule ->
+                check(css.contains(rule)) { "Player CSS copy removed a universal selector: $rule" }
+            }
+        }
+    }
+}
+tasks.named("preBuild") { dependsOn(verifyPlayerCopy) }
 
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")

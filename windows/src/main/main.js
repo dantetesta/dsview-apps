@@ -206,6 +206,8 @@ function wireIpc() {
       // Sem ele, cai no origin da última playlist resolvida (compatibilidade).
       const knownOrigin = cfg.baseDomain || cfg.origin;
       const { origin, token } = await resolve.resolve(input, knownOrigin);
+      cache.cancelDownloads();
+      if (cfg.origin !== origin || cfg.token !== token) state.clear();
       config.write({ origin, token, device: '', lastUrl: String(input || '') }); // troca de playlist zera o device.
       return { ok: true, origin, token };
     } catch (err) {
@@ -345,6 +347,7 @@ function wireIpc() {
   // Modo offline (cache local) ligado/desligado
   ipcMain.handle('offline:set', (_e, on) => {
     on = on !== false;
+    if (config.read().offline !== on) cache.cancelDownloads();
     config.write({ offline: on });
     return on;
   });
