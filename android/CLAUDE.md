@@ -2,7 +2,7 @@
 
 App **kiosk offline Android** (Kotlin + WebView), irmão do `../dsview` (Windows/Electron). Roda em
 **qualquer Android** incluindo **Android TV**. Mesma arquitetura **cache-proxy**: servidor local espelha a API do
-player, loop de sync espelha a mídia no disco. **v0.7.5** (versionCode 31).
+player, loop de sync espelha a mídia no disco. **v0.7.6** (versionCode 32).
 Repo git compartilhado com o app Windows (`dsview-apps/`, monorepo), **PÚBLICO** (`github.com/dantetesta/dsview-apps`)
 — é justamente por ser público que o `player.js` copiado tem a marca removida (ver Gotchas de build). Faz parte do
 guarda-chuva `Projetos/DSFácil/`.
@@ -110,3 +110,7 @@ O APK sempre esteve tecnicamente compatível (`minSdk 21`, `targetSdk 34`, sem l
 - Considerar `WorkManager`/foreground service pra o sync sobreviver melhor em background em Androids restritivos.
 
 > Este `CLAUDE.md` é doc de dev (não vai em build de release).
+
+## Atualização 0.7.6 (versionCode 32) — 2026-10-29
+
+Player compartilhado com uma preparação de vídeo por vez, liberação de recursos e retenção do quadro anterior em vídeos próprios. Usa fallback sem requestVideoFrameCallback para WebViews antigos. YouTube não reproduz escondido; Vimeo solicita preload. Os limites de rede/provedor/decoder permanecem. `verifyPlayerCopy` deve passar no build; testes JVM não provam reprodução em TV box.

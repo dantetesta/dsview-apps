@@ -3,7 +3,7 @@
 App **kiosk offline** (Electron 31, Windows 10/11 x64). Uma casca full-screen sem barra de URL em volta do
 **player do plugin DS View**, com **cache local** que espelha o conteúdo online no disco — a TV segue tocando
 mesmo sem internet. Repo git compartilhado com o app Android (`dsview-apps/`, monorepo), separado do plugin,
-**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.6.3**; falta validar o instalador em Windows real.
+**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.6.4**; falta validar o instalador em Windows real.
 
 > Faz parte do guarda-chuva `Projetos/DSFácil/`. O produto é o plugin (`../ds-facil/`, tem o CLAUDE.md detalhado).
 > Este app **consome os endpoints públicos que já existem** no plugin — não exige nenhuma mudança nele.
@@ -163,3 +163,7 @@ npm run dist:dir     # build sem empacotar (dist/win-unpacked) — teste rápido
 - Tratar `status:'password'`/`'expired'` na casca (hoje quem lida é o `player.js`; UX de kiosk pode querer um aviso).
 
 > Design original: `../player-app/PLAN.md`. Este `CLAUDE.md`/README não entram em build de release.
+
+## Atualização 0.6.4 — 2026-10-29
+
+Player compartilhado atualizado: prepara somente o próximo vídeo sem play no standby; mantém o quadro anterior até a promoção do vídeo próprio. YouTube inicializa sem autoplay oculto; Vimeo solicita preload. Tempos começam na reprodução. Fonte permanece `../../ds-facil/player/`; copiar no build, nunca editar renderer/player diretamente. Validação local não equivale a reprodução em hardware Windows.
