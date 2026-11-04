@@ -128,3 +128,7 @@ Player compartilhado pula término de YouTube/Vimeo mesmo com duração fixa. Se
 - Não há conversão de vídeo no aparelho nem garantia para codec/perfil recusado pelo hardware. H.264 High nível 5.0 em RK3188/1 GB requer teste no aparelho; uma cópia 720×1280 Baseline 3.1 é alternativa de conteúdo para diagnóstico.
 - Preservar a assinatura de release ao atualizar por cima. Builds/testes locais não comprovam instalação ou reprodução no RK3188.
 - Validação local: 25 regressões do player no Chromium (H.264 real e falhas/SDKs simulados), 58 testes JVM e `assembleRelease`/`verifyPlayerCopy` aprovados. APK 0.7.8 com o mesmo certificado de release anterior; pacote inspecionado sem docs, testes ou credenciais e player comparado ao fonte filtrado. Nenhum aparelho conectado por ADB; instalação/codec no RK3188 continuam sem prova. Artefatos e hashes em `../../reports/android-video-compatibility-2026-11-04/verification.json`. Nenhuma publicação GitHub/site/Academy feita nesta etapa.
+
+### Publicação GitHub — 2026-11-04
+
+Após a validação local, código enviado a `main` e Release `v0.7.8` publicada como latest, incluindo Android 0.7.8 / Windows 0.6.6 e os quatro assets versionados/fixos. Tag no commit funcional `b78b6695fcaafac52c8672393a6b15350562c348`. Tamanhos e SHA-256 dos quatro uploads conferem com os instaladores testados. As 10 regressões de reprodução executadas com os assets extraídos do APK também passaram. A publicação não comprova instalação ou reprodução no RK3188 e não altera o site/Academy do backend.
