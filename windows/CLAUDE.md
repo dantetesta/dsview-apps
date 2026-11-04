@@ -3,7 +3,7 @@
 App **kiosk offline** (Electron 31, Windows 10/11 x64). Uma casca full-screen sem barra de URL em volta do
 **player do plugin DS View**, com **cache local** que espelha o conteúdo online no disco — a TV segue tocando
 mesmo sem internet. Repo git compartilhado com o app Android (`dsview-apps/`, monorepo), separado do plugin,
-**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.6.5**; falta validar o instalador em Windows real.
+**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.6.6**; falta validar o instalador em Windows real.
 
 > Faz parte do guarda-chuva `Projetos/DSFácil/`. O produto é o plugin (`../ds-facil/`, tem o CLAUDE.md detalhado).
 > Este app **consome os endpoints públicos que já existem** no plugin — não exige nenhuma mudança nele.
@@ -171,3 +171,9 @@ Player compartilhado atualizado: prepara somente o próximo vídeo sem play no s
 ## Atualização 0.6.5 — 2026-10-30
 
 Player compartilhado pula término de YouTube/Vimeo mesmo com duração fixa. Sem início em 10 s ou sem progresso por cerca de 20 s, suspende o link no player por 5 min e segue a fila; tenta novamente depois. Não desabilita a playlist no servidor nem segue outra live. Lives em progresso não usam mais getDuration()+30 como prazo. Regressões com SDKs simulados não substituem teste de live/instalação em Windows real.
+
+## Atualização local 0.6.6 — 2026-11-04
+
+Player compartilhado trata erros de vídeo próprio com cooldown de 60 s e aviso/retry se toda a fila falhar, sem reabertura rápida. Vídeo único até o fim usa o mesmo elemento nas voltas e não prepara um segundo decoder; payload pendente continua aplicado na fronteira. Fallback do primeiro quadro valida progresso real quando o callback do Chromium não responde. Sem conversão de codecs; fonte permanece no plugin. Build/testes e cópia do player não comprovam instalação em Windows real.
+
+Validação local: 71 testes Node aprovados e instalador NSIS 0.6.6 gerado no macOS. `app.asar` inspecionado sem documentos/testes/credenciais; player extraído corresponde ao APK e ao fonte filtrado. Instalador versionado em Downloads para teste; sem publicação GitHub nesta etapa.

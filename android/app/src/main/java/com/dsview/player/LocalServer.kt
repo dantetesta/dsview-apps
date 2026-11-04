@@ -1,6 +1,7 @@
 package com.dsview.player
 
 import android.content.Context
+import android.app.ActivityManager
 import android.content.Intent
 import fi.iki.elonen.NanoHTTPD
 import org.json.JSONObject
@@ -49,6 +50,15 @@ class LocalServer(
     // /state/auth e /media continuam abertos porque o player.js do plugin (não é nosso código)
     // fala com eles direto, sem como ele saber desse token.
     val sessionToken: String = java.util.UUID.randomUUID().toString()
+
+    val conservativeVideoPlayback: Boolean by lazy {
+        try {
+            val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            val info = ActivityManager.MemoryInfo()
+            manager?.getMemoryInfo(info)
+            VideoPlaybackPolicy.conserveMemory(manager?.isLowRamDevice == true, info.totalMem)
+        } catch (e: Exception) { false }
+    }
 
     override fun serve(session: IHTTPSession): Response {
         val uri = session.uri
@@ -316,7 +326,12 @@ class LocalServer(
     // ---------------------------------------------------------------- helpers
     private fun asset(name: String, mimeOverride: String?): Response {
         return try {
-            val bytes = context.assets.open(name).use { it.readBytes() }
+            val original = context.assets.open(name).use { it.readBytes() }
+            val bytes = if (name == "player.html")
+                original.toString(Charsets.UTF_8)
+                    .replace("__DSVIEW_VIDEO_COMPATIBILITY__", conservativeVideoPlayback.toString())
+                    .toByteArray(Charsets.UTF_8)
+            else original
             val mime = mimeOverride ?: mimeOf(name)
             cors(newFixedLengthResponse(Response.Status.OK, mime, bytes.inputStream(), bytes.size.toLong()))
         } catch (e: Exception) {

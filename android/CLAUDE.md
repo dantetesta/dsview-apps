@@ -2,7 +2,7 @@
 
 App **kiosk offline Android** (Kotlin + WebView), irmão do `../dsview` (Windows/Electron). Roda em
 **qualquer Android** incluindo **Android TV**. Mesma arquitetura **cache-proxy**: servidor local espelha a API do
-player, loop de sync espelha a mídia no disco. **v0.7.7** (versionCode 33).
+player, loop de sync espelha a mídia no disco. **v0.7.8** (versionCode 34).
 Repo git compartilhado com o app Windows (`dsview-apps/`, monorepo), **PÚBLICO** (`github.com/dantetesta/dsview-apps`)
 — é justamente por ser público que o `player.js` copiado tem a marca removida (ver Gotchas de build). Faz parte do
 guarda-chuva `Projetos/DSFácil/`.
@@ -118,3 +118,13 @@ Player compartilhado com uma preparação de vídeo por vez, liberação de recu
 ## Atualização 0.7.7 (versionCode 33) — 2026-10-30
 
 Player compartilhado pula término de YouTube/Vimeo mesmo com duração fixa. Sem início em 10 s ou sem progresso por cerca de 20 s, suspende o link no player por 5 min e segue a fila; tenta novamente depois. Não desabilita a playlist no servidor nem segue outra live. Lives em progresso não usam mais getDuration()+30 como prazo. `verifyPlayerCopy` continua obrigatório; regressões com SDKs simulados não substituem teste em Android/TV box real.
+
+## Atualização local 0.7.8 (versionCode 34) — 2026-11-04
+
+- `LocalServer` injeta `preloadVideo=false` no player do modo cache quando o sistema informa low-RAM ou memória total até 1,5 GiB. A regra pura é `VideoPlaybackPolicy`; consulta sem dados preserva o modo padrão. Diagnóstico informa o modo de vídeo no cache. Não altera o player remoto do modo somente online.
+- Player compartilhado suspende vídeo próprio com erro por 60 s em vez de reabrir a cada 250 ms. Fila sem item disponível mostra aviso e retenta; fila mista segue com itens válidos. Diagnóstico recebe código MediaError, sem URL/token.
+- Vídeo único até o fim repete no mesmo elemento; não prepara um decoder duplicado. Edições pendentes entram na fronteira do item. Callback de quadro que não responde tem fallback por progresso real e dados decodificados.
+- Na troca de vídeos em modo econômico, captura o último quadro em canvas limitado a 1280 px no maior lado e libera o decoder anterior antes de abrir o próximo. Sem frame capturável, libera o decoder mesmo assim. Evita dois decoders concorrentes durante o handoff, além de desativar o standby.
+- Não há conversão de vídeo no aparelho nem garantia para codec/perfil recusado pelo hardware. H.264 High nível 5.0 em RK3188/1 GB requer teste no aparelho; uma cópia 720×1280 Baseline 3.1 é alternativa de conteúdo para diagnóstico.
+- Preservar a assinatura de release ao atualizar por cima. Builds/testes locais não comprovam instalação ou reprodução no RK3188.
+- Validação local: 25 regressões do player no Chromium (H.264 real e falhas/SDKs simulados), 58 testes JVM e `assembleRelease`/`verifyPlayerCopy` aprovados. APK 0.7.8 com o mesmo certificado de release anterior; pacote inspecionado sem docs, testes ou credenciais e player comparado ao fonte filtrado. Nenhum aparelho conectado por ADB; instalação/codec no RK3188 continuam sem prova. Artefatos e hashes em `../../reports/android-video-compatibility-2026-11-04/verification.json`. Nenhuma publicação GitHub/site/Academy feita nesta etapa.

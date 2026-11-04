@@ -32,7 +32,8 @@
         if (device) localStorage.setItem('dsv_device_' + token, device);
         else localStorage.removeItem('dsv_device_' + token);
       } catch (e) {}
-      window.DSF_PLAYER = { api: location.origin + '/state', token: token, logo: '', brand: '' };
+      var conserveMemory = '__DSVIEW_VIDEO_COMPATIBILITY__' === 'true';
+      window.DSF_PLAYER = { api: location.origin + '/state', token: token, logo: '', brand: '', preloadVideo: !conserveMemory };
       // Kiosk desatendido: o player só desmuta após um gesto. Como o WebView já roda com autoplay
       // liberado (mediaPlaybackRequiresUserGesture=false), simulamos o gesto pro som sair sozinho.
       window.addEventListener('load', function () {

@@ -257,6 +257,8 @@ class MainActivity : AppCompatActivity() {
         sb.append("Android: ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n")
         sb.append("Aparelho: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append('\n')
         sb.append("WebView: ").append(webViewVersion()).append('\n')
+        sb.append("Vídeo no modo cache: ").append(if (app.serverOk && app.server.conservativeVideoPlayback)
+            "compatibilidade (sem pré-carga do próximo vídeo)" else "padrão").append('\n')
         sb.append("Servidor local: ").append(if (app.serverOk) "porta ${app.server.listeningPort}" else "NÃO subiu")
         app.lastCrash()?.let { sb.append("\n\nÚltimo erro registrado:\n").append(it.take(1200)) }
         return sb.toString()
