@@ -20,8 +20,8 @@ android {
         applicationId = "com.dsview.player"
         minSdk = 21          // Android 5.0 — cobre TV boxes e Android TV antigos.
         targetSdk = 34
-        versionCode = 34
-        versionName = "0.7.8"
+        versionCode = 35
+        versionName = "0.7.9"
     }
 
     signingConfigs {

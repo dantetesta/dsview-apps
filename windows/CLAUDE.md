@@ -3,7 +3,7 @@
 App **kiosk offline** (Electron 31, Windows 10/11 x64). Uma casca full-screen sem barra de URL em volta do
 **player do plugin DS View**, com **cache local** que espelha o conteúdo online no disco — a TV segue tocando
 mesmo sem internet. Repo git compartilhado com o app Android (`dsview-apps/`, monorepo), separado do plugin,
-**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.6.6**; falta validar o instalador em Windows real.
+**PÚBLICO** (`github.com/dantetesta/dsview-apps`). **v0.6.7**; falta validar o instalador em Windows real.
 
 > Faz parte do guarda-chuva `Projetos/DSFácil/`. O produto é o plugin (`../ds-facil/`, tem o CLAUDE.md detalhado).
 > Este app **consome os endpoints públicos que já existem** no plugin — não exige nenhuma mudança nele.
@@ -179,3 +179,23 @@ Player compartilhado trata erros de vídeo próprio com cooldown de 60 s e aviso
 Validação local: 71 testes Node aprovados e instalador NSIS 0.6.6 gerado no macOS. `app.asar` inspecionado sem documentos/testes/credenciais; player extraído corresponde ao APK e ao fonte filtrado. Instalador versionado em Downloads para teste; sem publicação GitHub nesta etapa.
 
 Publicação posterior em 2026-11-04: código enviado a `main`; EXE 0.6.6 distribuído com Android 0.7.8 na Release latest `v0.7.8`, tag no commit funcional `b78b6695fcaafac52c8672393a6b15350562c348`. Os quatro uploads têm tamanho/SHA-256 conferidos. As 10 regressões de reprodução com assets extraídos do `app.asar` passaram; instalação em Windows real continua sem validação.
+
+## Recuperação de vídeo sem progresso — 2026-11-05
+
+Player compartilhado monitora vídeos próprios a cada 2 s. Após 20 s sem avanço
+real de `currentTime`, aplica a recuperação existente: libera o decoder ao trocar
+conteúdo, segue os itens válidos e suspende a URL por 60 s. Fila de vídeo único
+mostra aviso e retenta sem precisar de payload novo. Eventos `timeupdate` e reinício
+do loop renovam a janela; callbacks de cenas antigas continuam protegidos por geração.
+Buffering curto, duração fixa e edições pendentes têm regressões específicas.
+Isso detecta parada do relógio de mídia; não repara travamento do sistema/GPU ou
+processo JavaScript inteiro, nem comprova a causa no TV box do cliente.
+
+Versões locais: plugin 1.77.7 (schema 1.18.0), Android 0.7.9/versionCode 35 e
+Windows 0.6.7. Builds locais gerados em Downloads; APK com o mesmo certificado
+anterior. 29 testes do player, 58 testes JVM (resultado Gradle reutilizado porque
+o código Kotlin não mudou), 71 testes Windows e 6 regressões com player extraído
+do APK aprovados. APK e `app.asar` contêm o mesmo player filtrado e foram inspecionados
+sem docs internas, testes ou credenciais. Detalhes em
+`reports/player-stall-fix-2026-11-05/verification.json` na raiz do guarda-chuva.
+Não houve publicação, deploy, instalação ou teste em TV box/Windows real nesta etapa.

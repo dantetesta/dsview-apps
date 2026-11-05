@@ -2,7 +2,7 @@
 
 App **kiosk offline Android** (Kotlin + WebView), irmão do `../dsview` (Windows/Electron). Roda em
 **qualquer Android** incluindo **Android TV**. Mesma arquitetura **cache-proxy**: servidor local espelha a API do
-player, loop de sync espelha a mídia no disco. **v0.7.8** (versionCode 34).
+player, loop de sync espelha a mídia no disco. **v0.7.9** (versionCode 35).
 Repo git compartilhado com o app Windows (`dsview-apps/`, monorepo), **PÚBLICO** (`github.com/dantetesta/dsview-apps`)
 — é justamente por ser público que o `player.js` copiado tem a marca removida (ver Gotchas de build). Faz parte do
 guarda-chuva `Projetos/DSFácil/`.
@@ -132,3 +132,23 @@ Player compartilhado pula término de YouTube/Vimeo mesmo com duração fixa. Se
 ### Publicação GitHub — 2026-11-04
 
 Após a validação local, código enviado a `main` e Release `v0.7.8` publicada como latest, incluindo Android 0.7.8 / Windows 0.6.6 e os quatro assets versionados/fixos. Tag no commit funcional `b78b6695fcaafac52c8672393a6b15350562c348`. Tamanhos e SHA-256 dos quatro uploads conferem com os instaladores testados. As 10 regressões de reprodução executadas com os assets extraídos do APK também passaram. A publicação não comprova instalação ou reprodução no RK3188 e não altera o site/Academy do backend.
+
+## Recuperação de vídeo sem progresso — 2026-11-05
+
+Player compartilhado monitora vídeos próprios a cada 2 s. Após 20 s sem avanço
+real de `currentTime`, aplica a recuperação existente: libera o decoder ao trocar
+conteúdo, segue os itens válidos e suspende a URL por 60 s. Fila de vídeo único
+mostra aviso e retenta sem precisar de payload novo. Eventos `timeupdate` e reinício
+do loop renovam a janela; callbacks de cenas antigas continuam protegidos por geração.
+Buffering curto, duração fixa e edições pendentes têm regressões específicas.
+Isso detecta parada do relógio de mídia; não repara travamento do sistema/GPU ou
+processo JavaScript inteiro, nem comprova a causa no TV box do cliente.
+
+Versões locais: plugin 1.77.7 (schema 1.18.0), Android 0.7.9/versionCode 35 e
+Windows 0.6.7. Builds locais gerados em Downloads; APK com o mesmo certificado
+anterior. 29 testes do player, 58 testes JVM (resultado Gradle reutilizado porque
+o código Kotlin não mudou), 71 testes Windows e 6 regressões com player extraído
+do APK aprovados. APK e `app.asar` contêm o mesmo player filtrado e foram inspecionados
+sem docs internas, testes ou credenciais. Detalhes em
+`reports/player-stall-fix-2026-11-05/verification.json` na raiz do guarda-chuva.
+Não houve publicação, deploy, instalação ou teste em TV box/Windows real nesta etapa.
